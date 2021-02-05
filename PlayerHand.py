@@ -1,9 +1,46 @@
 from collections import defaultdict
 from Enums import CardValue
 
+
+class PlayerHand:
+    def __init__(self):
+        self.first = None
+        self.second = None
+
+    def calculate_strength(self, other_three_cards):  # TODO add each method all the hand info
+        hand = [self.first, self.second].append(other_three_cards)
+        result = check_straight_flush(hand)
+        if result[0]:
+            return [9, result[1]]
+        result = check_four_of_a_kind(hand)
+        if result[0]:
+            return [8, result[1]]
+        result = check_full_house(hand)
+        if result[0]:
+            return [7, result[1], result[2]]
+        if check_flush(hand):
+            return [6]
+        result = check_straight(hand)
+        if result[0]:
+            return [5, result[1]]
+        result = check_three_of_a_kind(hand)
+        if result[0]:
+            return [4, result[1]]
+        result = check_two_pairs(hand)
+        if result[0]:
+            return [3, result[1], result[2]]
+        result = check_one_pairs(hand)
+        if result[0]:
+            return [2, result[1]]
+        result = check_high_card(hand)
+        if result[0]:
+            return [8, result[1]]
+
+
 def check_straight_flush(hand):
-    if check_flush(hand) and check_straight(hand):
-        return True
+    result = check_straight(hand)
+    if check_flush(hand) and result[0]:
+        return [True, result[1]]
     else:
         return False
 
@@ -13,8 +50,11 @@ def check_four_of_a_kind(hand):
     value_counts = defaultdict(lambda: 0)
     for v in values:
         value_counts[v] += 1
+
     if sorted(value_counts.values()) == [1, 4]:
-        return True
+        for i in len(value_counts):
+            if value_counts[i] == 4:
+                return [True, i]
     return False
 
 
@@ -24,7 +64,12 @@ def check_full_house(hand):
     for v in values:
         value_counts[v] += 1
     if sorted(value_counts.values()) == [2, 3]:
-        return True
+        for i in len(value_counts):
+            if value_counts[i] == 2:
+                pairs_value = i
+            if value_counts[i] == 3:
+                three_value = i
+        return [True, three_value, pairs_value]
     return False
 
 
@@ -41,50 +86,72 @@ def check_straight(hand):
     value_counts = defaultdict(lambda: 0)
     for v in values:
         value_counts[v] += 1
-    rank_values = [card_order_dict[i] for i in values]
+    rank_values = [CardValue[i] for i in values]
     value_range = max(rank_values) - min(rank_values)
     if len(set(value_counts.values())) == 1 and (value_range == 4):
         return True
     else:
         # check straight with low Ace
-        if set(values) == set(["A", "2", "3", "4", "5"]):
-            return True
+        if set(values) == set(["A", "TWO", "TREE", "FOUR", "FIVE"]):
+            return [True, max(rank_values)]
         return False
 
 
 def check_three_of_a_kind(hand):
-    pass
+    values = [i.value for i in hand]
+    value_counts = defaultdict(lambda: 0)
+    for v in values:
+        value_counts[v] += 1
+    if sorted(value_counts.values()) == [1, 1, 3]:
+        for i in len(value_counts):
+            if value_counts[i] == 3:
+                three_value = i
+        return [True, three_value]
+    return False
 
 
 def check_two_pairs(hand):
-    pass
+    values = [i.value for i in hand]
+    value_counts = defaultdict(lambda: 0)
+    for v in values:
+        value_counts[v] += 1
+    if sorted(value_counts.values()) == [1, 2, 2]:
+        for i in len(value_counts):
+            if value_counts[i] == 2 and i != second_pair_value:
+                first_pair_value = i
+            if value_counts[i] == 2 and i != first_pair_value:
+                second_pair_value = i
+
+        if first_pair_value > second_pair_value:
+            return [True, first_pair_value, second_pair_value]
+        else:
+            return [True, second_pair_value, first_pair_value]
+    return False
 
 
 def check_one_pairs(hand):
-    pass
+    values = [i.value for i in hand]
+    value_counts = defaultdict(lambda: 0)
+    for v in values:
+        value_counts[v] += 1
+    if 2 in value_counts.values():
+        for i in len(value_counts):
+            if value_counts[i] == 2:
+                pairs_value = i
+
+                return [True, pairs_value]
+            return False
 
 
-class PlayerHand:
-    def __init__(self):
-        self.first = None
-        self.second = None
-
-    def calculate_strength(self, other_three_cards):
-        hand = [self.first, self.second].append(other_three_cards)
-        if check_straight_flush(hand):
-            return 9
-        if check_four_of_a_kind(hand):
-            return 8
-        if check_full_house(hand):
-            return 7
-        if check_flush(hand):
-            return 6
-        if check_straight(hand):
-            return 5
-        if check_three_of_a_kind(hand):
-            return 4
-        if check_two_pairs(hand):
-            return 3
-        if check_one_pairs(hand):
-            return 2
-        return 1
+def check_high_card(hand):
+    high_card = 0
+    values = [i.value for i in hand]
+    value_counts = defaultdict(lambda: 0)
+    for v in values:
+        value_counts[v] += 1
+    if 2 in value_counts.values():
+        for i in len(value_counts):
+            if value_counts[i] == 1 and high_card < i:
+                high_card = i
+                return [True, high_card]
+            return False
