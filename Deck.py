@@ -38,7 +38,7 @@ class Deck:
             players[i].hand.second = self.deck[len(self.deck) - 1:]  # DEAL ONE CARD TO EACH PLAYER
             self.deck = self.deck[:-1]
 
-    def new_round(self):
+    def new_mini_game(self):
         self.deck = []
         for i in range(1, 15):
             self.deck.append(Card(i, Symbol.HEARTS))

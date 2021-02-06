@@ -27,7 +27,7 @@ table = None
 thread_count = 0
 players_ready = 0
 players_limit = NUMBER_OF_PLAYERS
-players = []
+players = {}
 table_status = TableStatus.NOT_READY
 
 # lock for shared variables
@@ -45,42 +45,37 @@ class TcpThread(threading.Thread):
         self.client_socket.send('Please enter your name name: '.encode('utf-8'))
         name = self.client_socket.recv(message_len).decode('utf-8')
         register_player(name)
+        self.client_socket.send(f'Waiting for {players_limit - players_ready} players...'.encode('utf-8'))
         while table_status == TableStatus.NOT_READY:
             continue
-        game_status = table.table_status()
-        player_hand = table.get_player_hand(name)
-        game_status += f'Your Hand:  {player_hand.first},{player_hand.second}'
-        if table.dealer_button_player.name == name:
-            game_status += "ITS YOUR TURN NOW"
-        else:
-            game_status += "ITS NOT YOUR TURN NOW"
-        self.client_socket.send(game_status.encode('utf-8'))
+        while True:
+            game_status = table.table_status()
+            player_hand = table.get_player_hand(name)
+            game_status += f'Your Hand:  {player_hand.first},{player_hand.second}'
+            if table.current_player == name:
+                game_status += "ITS YOUR TURN NOW"
+            else:
+                game_status += "ITS NOT YOUR TURN NOW"
+            self.client_socket.send(game_status.encode('utf-8'))
+            while table.current_player != name:
+                pass
+            self.client_socket.send(game_status.encode('utf-8'))
 
-        data = self.client_socket.recv(message_len).decode('utf-8')
-       # send_tcp_message(message, self.client_socket)
-        self.client_socket.close()
+            data = self.client_socket.recv(message_len).decode('utf-8')
+            table.player_action(data, name)
+            # send_tcp_message(message, self.client_socket)
+            self.client_socket.close()
 
 
 def register_player(name):
-    """
-    This function registers a new team to the current game.
-    :param name: The name of the team to register.
-    :return:
-    """
     global players_ready
     lock.acquire()
-    players.append(Player.Player(name, CASH))
+    players[name] = Player.Player(name, CASH)
     players_ready += 1
     lock.release()
 
 
 def send_tcp_message(message, tcp_socket):
-    """
-    This function sends {message} to the client using {tcp_socket}.
-    :param message: the message to send
-    :param tcp_socket: the socket we use to send the message.
-    :return:
-    """
     lock.acquire()
     tcp_socket.send(message.encode('utf-8'))
     lock.release()

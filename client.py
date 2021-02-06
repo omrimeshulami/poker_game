@@ -22,34 +22,29 @@ if platform.system() == 'Windows':
 
 def run_client():
     while True:
-        client_TCP_socket, client_UDP_socket = init_sockets()
-        data, addr = client_UDP_socket.recvfrom(message_len)
-        data = unpack('IbH', data)
-        magic, mtype, port = data
-        if magic == magic_cookie and mtype == message_type:
-            print(f"Received offer from " + addr[0] + " attempting to connect...")
-            client_TCP_socket.connect((addr[0], port))
-            client_UDP_socket.close()
+        client_TCP_socket = init_sockets()
+        print(f"Received offer from " + addr[0] + " attempting to connect...")
+        client_TCP_socket.connect((addr[0], 12345))
 
-            """ selecting team name """
-            data, addr = client_TCP_socket.recvfrom(message_len)
-            data = data.decode('utf-8')
-            name = input(data)
-            client_TCP_socket.send(name.encode('utf-8'))
+        """ selecting team name """
+        data, addr = client_TCP_socket.recvfrom(message_len)
+        data = data.decode('utf-8')
+        name = input(data)
+        client_TCP_socket.send(name.encode('utf-8'))
 
-            """ welcome message """
-            data, addr = client_TCP_socket.recvfrom(message_len)
-            data = data.decode('utf-8')
-            print(data)
+        """ welcome message """
+        data, addr = client_TCP_socket.recvfrom(message_len)
+        data = data.decode('utf-8')
+        print(data)
 
-            """ game starts """
-            try:
-                get_and_send_keys(client_TCP_socket)
-                client_TCP_socket.close()
+        """ game starts """
+        try:
+            get_and_send_keys(client_TCP_socket)
+            client_TCP_socket.close()
 
-            except:
-                print('server disconnected')
-                client_TCP_socket.close()
+        except:
+            print('server disconnected')
+            client_TCP_socket.close()
 
 
 def init_sockets():
@@ -59,12 +54,9 @@ def init_sockets():
     """
     # init sockets
     client_TCP_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TCP
-    client_UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)  # UDP
-    client_UDP_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    client_UDP_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    client_UDP_socket.bind(("", udp_port))
+
     print('Client started, listening for offer requests...​”.')
-    return client_TCP_socket, client_UDP_socket
+    return client_TCP_socket
 
 
 def get_and_send_keys(tcp_socket):

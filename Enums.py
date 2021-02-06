@@ -26,13 +26,14 @@ class CardValue(Enum):
 
 
 class Status(Enum):
-    OFFLINE = 'OFFLINE'
-    ONLINE = 'ONLINE'
-    FOLD = 'FOLD'
-
+    RAISED = 'RAISED'
+    CALLED = 'CALLED'
+    FOLDED = 'FOLDED'
+    CHECKED = "CHECKED"
+    WAIT_FOR_TURN = 'WAIT_FOR_TURN'
 
 class TableStatus(Enum):
-    NOT_READY = 'NOT READY'
+    NOT_READY = 'NOT_READY'
     READY = 'READY  '
 
 
