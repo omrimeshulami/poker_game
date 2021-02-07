@@ -9,7 +9,7 @@ class FinancialSystem:
     def raise_bet(self, amount):
         if amount <= self.max_bet:  # TODO maybe move it to the location the player send amount
             self.max_bet -= amount
-            self.round_invest = 0
+            self.round_invest = amount
 
     def need_all_in(self, bet_to_call):
         return bet_to_call > self.max_bet
@@ -34,6 +34,7 @@ class FinancialSystem:
         self.round_invest = 0
 
     def won_mini_game_update(self, cash):
+        self.total_cash -= self.mini_game_invest
         self.total_cash += cash
         self.max_bet = self.total_cash
         self.round_invest = 0  # after each card

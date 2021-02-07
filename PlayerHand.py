@@ -1,5 +1,5 @@
 from collections import defaultdict
-from Enums import CardValue
+from Enums import CardValue,HandStrength
 
 
 class PlayerHand:
@@ -11,30 +11,30 @@ class PlayerHand:
         hand = [self.first, self.second].append(other_three_cards)
         result = check_straight_flush(hand)
         if result[0]:
-            return [9, result[1]]
+            return [HandStrength.STRAIGHT_FLUSH, result[1]]
         result = check_four_of_a_kind(hand)
         if result[0]:
-            return [8, result[1]]
+            return [HandStrength.FOUR_OF_KIND, result[1]]
         result = check_full_house(hand)
         if result[0]:
-            return [7, result[1], result[2]]
+            return [HandStrength.FULL_HOUSE, result[1], result[2]]
         if check_flush(hand):
-            return [6]
+            return [HandStrength.FLUSH]
         result = check_straight(hand)
         if result[0]:
-            return [5, result[1]]
+            return [HandStrength.STRAIGHT, result[1]]
         result = check_three_of_a_kind(hand)
         if result[0]:
-            return [4, result[1]]
+            return [HandStrength.THREE_OF_KIND, result[1]]
         result = check_two_pairs(hand)
         if result[0]:
-            return [3, result[1], result[2]]
+            return [HandStrength.TWO_PAIRS, result[1], result[2]]
         result = check_one_pairs(hand)
         if result[0]:
-            return [2, result[1]]
+            return [HandStrength.PAIR, result[1]]
         result = check_high_card(hand)
         if result[0]:
-            return [8, result[1]]
+            return [HandStrength.HIGH_CARD, result[1]]
 
 
 def check_straight_flush(hand):

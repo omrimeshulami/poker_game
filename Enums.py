@@ -48,4 +48,3 @@ class HandStrength(Enum):
     FULL_HOUSE = 7
     FOUR_OF_KIND = 8
     STRAIGHT_FLUSH = 9
-    ROYAL_FlUSH = 10
