@@ -31,6 +31,7 @@ class Status(Enum):
     FOLDED = 'FOLDED'
     CHECKED = "CHECKED"
     WAIT_FOR_TURN = 'WAIT_FOR_TURN'
+    ALL_IN = "ALL_IN"
 
 class TableStatus(Enum):
     NOT_READY = 'NOT_READY'

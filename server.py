@@ -14,7 +14,8 @@ from Enums import TableStatus
 
 # GAME CONFIGURATION
 CASH = 1000
-NUMBER_OF_PLAYERS = 2
+MINIMUM_NUMBER_OF_PLAYERS = 2
+MAXIMUM_NUMBER_OF_PLAYERS = 5
 SMALL_BLIND_VALUE = 5
 BIG_BLIND_VALUE = 10
 
@@ -26,7 +27,7 @@ message_len = 1024
 table = None
 thread_count = 0
 players_ready = 0
-players_limit = NUMBER_OF_PLAYERS
+players_limit = MAXIMUM_NUMBER_OF_PLAYERS
 players = {}
 table_status = TableStatus.NOT_READY
 
@@ -45,7 +46,7 @@ class TcpThread(threading.Thread):
         self.client_socket.send('Please enter your name name: '.encode('utf-8'))
         name = self.client_socket.recv(message_len).decode('utf-8')
         register_player(name)
-        self.client_socket.send(f'Waiting for {players_limit - players_ready} players...'.encode('utf-8'))
+        self.client_socket.send(f'Waiting for {MINIMUM_NUMBER_OF_PLAYERS - players_ready} players...'.encode('utf-8'))
         while table_status == TableStatus.NOT_READY:
             continue
         while True:
@@ -97,7 +98,7 @@ if __name__ == '__main__':
                 thread_count += 1
                 lock.release()
 
-            if players_ready == players_limit:
+            if 2 <= players_ready <= players_limit:
                 table = Table.Table(players, SMALL_BLIND_VALUE, BIG_BLIND_VALUE)
                 table_status = TableStatus.READY
                 break

@@ -3,11 +3,11 @@ import random
 from Enums import Status
 
 
-# TODO pot system,compare same lvl of hands,action player raised
+# TODO compare same lvl of hands,action player raised, and the todos below that most important
 
 class Table:
     def __init__(self, players, small_blind_value, big_blind_value):
-        self.pot = 0  # TODO maybe create class for pot to manage the pot/side pot and who wins what
+        self.pot = 0
         self.players = players
         self.players_remaining = [p.name for p in players]
         self.small_blind_player = None  #
@@ -29,11 +29,88 @@ class Table:
     RAISE: "raise 100"
      '''
 
-    def is_round_over(self):
+    def player_action(self, action, name):
+        actions_parts = action.split()
+        if actions_parts[0].lower() == "fold":
+            self.players[name].status = Status.FOLDED
+            self.players_remaining.pop(name)
+            self.players[name].bank_account.fold()
+            if len(self.players_remaining) == 1:
+                self.end_mini_game()  # TODO this function
+            elif not self.is_round_over():
+                self.switch_to_next_player()
+            elif self.is_mini_game_over():
+                self.new_mini_game()
+            else:
+                self.new_round()
+            return
+
+        elif actions_parts[0].lower() == "call":
+            max_raise_yet = 0
+            self.players[name].status = Status.CALLED
+            for p in self.players:
+                if p.bank_accout.round_invested > max_raise_yet:
+                    max_raise_yet = p.bank_accout.round_invested
+            if self.players[name].bank_account.need_all_in(max_raise_yet):
+                self.players[name].staus = Status.ALL_IN
+            self.players[name].bank_account.call(max_raise_yet)
+            # TODO here need to ceack if everuone called- first impression:chekch if everyone is fold/called status
+            # TODO and next player is raised status already made function below
+            if not self.is_round_over():
+                self.switch_to_next_player()
+            elif self.is_mini_game_over():
+                self.new_mini_game()
+            else:
+                self.new_round()
+            return
+
+    ############## TABLE METHODS #################
+    def open_new_card(self):
+        if len(self.cards_on_the_table) == 0:
+            self.cards_on_the_table.append(self.deck.the_flop())
+        elif len(self.cards_on_the_table) == 3:
+            self.cards_on_the_table.append(self.deck.the_turn())
+        else:
+            self.cards_on_the_table.append(self.deck.the_river())
+
+    def collect_blinds(self):
+        self.players[self.small_blind_player].bank.call(self.small_blind_value)
+        self.players[self.big_blind_player].bank.call(self.big_blind_value)
+
+    def switch_to_next_player(self):
+        while True:
+            if self.players_remaining.index(self.current_player) + 1 <= len(self.players_remaining) - 1:
+                self.current_player = self.players_remaining[
+                    self.players_remaining.index(self.current_player) + 1]
+            else:
+                self.current_player = self.players_remaining[0]
+            if self.players[self.current_player].status != Status.ALL_IN:
+                return
+
+    def is_everyone_finished_bet(self):             #TODO THIS FIRST!!!
+        pass
+
+    ############# ROUND METHODS ###################
+    def new_round(self):
+        self.open_new_card()
         for p in self.players_remaining:
-            if p.status == Status.RAISED:
-                return False
-        return True
+            self.pot += self.players[p].back_account.round_invested
+            self.players[p].back_account.new_round()
+
+    def end_round(self):
+        pass
+
+    def is_round_over(self):
+        pass
+
+    ########### MINI GAME METHODS ###############
+    def new_mini_game(self):
+        self.deck = Deck.Deck()
+        self.pot = 0
+        self.update_buttons()
+
+    def end_mini_game(self):
+        pass
 
     def is_mini_game_over(self):
         if len(self.cards_on_the_table) != 5:
@@ -43,59 +120,7 @@ class Table:
                 return False
         return True
 
-    def new_round(self):
-        self.open_new_card()
-        # TODO will need to update pot object and
-        for p in self.players_remaining:
-            self.players[p].back_account.new_round()
-
-    def switch_to_next_player(self):
-        if self.players_remaining.index(self.current_player) + 1 <= len(self.players_remaining) - 1:
-            self.current_player = self.players_remaining[
-                self.players_remaining.index(self.current_player) + 1]
-        else:
-            self.current_player = self.players_remaining[0]
-
-    def player_action(self, action, name):
-        actions_parts = action.split()
-        if actions_parts[0].lower() == "fold":
-            self.players[name].status = Status.FOLDED
-            self.players_remaining.pop(name)
-            self.players[name].bank_account.fold()  # TODO need update pot after create pot system
-            if not self.is_round_over():
-                self.switch_to_next_player()
-            elif self.is_mini_game_over():
-                self.new_mini_game()
-            else:
-                self.new_round()
-            return
-
-        elif actions_parts[0].lower() == "call":
-            self.players[name].status = Status.CALLED
-            self.players[name].bank_account.call()  # TODO need update pot after create pot system
-            if not self.is_round_over():
-                self.switch_to_next_player()
-            elif self.is_mini_game_over():
-                self.new_mini_game()
-            else:
-                self.new_round()
-            return
-
-    def open_new_card(self):
-        if len(self.cards_on_the_table) == 0:
-            self.cards_on_the_table.append(self.deck.the_flop())
-        elif len(self.cards_on_the_table) == 3:
-            self.cards_on_the_table.append(self.deck.the_turn())
-        else:
-            self.cards_on_the_table.append(self.deck.the_river())
-
-    def winner_name(self):
-        pass
-
-    def new_mini_game(self):
-        self.deck = Deck.Deck()
-        self.pot = 0
-        self.update_buttons()
+    ############# PRINT METHODS #################
 
     def table_status(self):
         text = ''
@@ -108,13 +133,11 @@ class Table:
         text += players_cash
         return
 
+    ################ GETTERS ###################
     def get_player_hand(self, name):
         return self.players[name].hand
 
-    def collect_blinds(self):
-        self.players[self.small_blind_player].bank.call(self.small_blind_value)
-        self.players[self.big_blind_player].bank.call(self.big_blind_value)
-
+    ############## BUTTON METHODS ##############
     def init_buttons(self):
         random.shuffle(self.players)
         if len(self.players_remaining) == 2:

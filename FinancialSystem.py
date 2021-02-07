@@ -11,6 +11,9 @@ class FinancialSystem:
             self.max_bet -= amount
             self.round_invest = 0
 
+    def need_all_in(self, bet_to_call):
+        return bet_to_call > self.max_bet
+
     def call(self, bet_to_call):
         if bet_to_call > self.max_bet:
             self.round_invest += self.max_bet
