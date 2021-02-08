@@ -1,19 +1,13 @@
 import socket
-import time
 import threading
-import platform
-import random
-import select
-from struct import *
 import Table
-import Player
 from Enums import TableStatus
 
 # GLOBAL PARAMS
 
 
 # GAME CONFIGURATION
-CASH = 1000
+STARTING_CASH = 1000
 MINIMUM_NUMBER_OF_PLAYERS = 2
 MAXIMUM_NUMBER_OF_PLAYERS = 5
 SMALL_BLIND_VALUE = 5
@@ -45,7 +39,10 @@ class TcpThread(threading.Thread):
         global players_ready
         self.client_socket.send('Please enter your name name: '.encode('utf-8'))
         name = self.client_socket.recv(message_len).decode('utf-8')
-        register_player(name)
+        table.register_player(name)
+        lock.acquire()
+        players_ready += 1
+        lock.release()
         self.client_socket.send(f'Waiting for {MINIMUM_NUMBER_OF_PLAYERS - players_ready} players...'.encode('utf-8'))
         while table_status == TableStatus.NOT_READY:
             continue
@@ -68,14 +65,6 @@ class TcpThread(threading.Thread):
             self.client_socket.close()
 
 
-def register_player(name):
-    global players_ready
-    lock.acquire()
-    players[name] = Player.Player(name, CASH)
-    players_ready += 1
-    lock.release()
-
-
 def send_tcp_message(message, tcp_socket):
     lock.acquire()
     tcp_socket.send(message.encode('utf-8'))
@@ -89,6 +78,7 @@ if __name__ == '__main__':
         server_socket_tcp.bind((ip_address, tcp_port))
         print('TCP socket wait for connection')
         server_socket_tcp.listen(4)
+        table = Table.Table(SMALL_BLIND_VALUE, BIG_BLIND_VALUE)
         while True:
             if thread_count != players_limit:
                 client_socket, addr = server_socket_tcp.accept()
@@ -99,6 +89,6 @@ if __name__ == '__main__':
                 lock.release()
 
             if 2 <= players_ready <= players_limit:
-                table = Table.Table(players, SMALL_BLIND_VALUE, BIG_BLIND_VALUE)
+                table = Table.Table(SMALL_BLIND_VALUE, BIG_BLIND_VALUE, STARTING_CASH)
                 table_status = TableStatus.READY
                 break

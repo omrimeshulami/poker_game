@@ -1,15 +1,19 @@
 import Deck
 import random
-from Enums import Status
+from Enums import Status, HandStrength
+import threading
+
+lock = threading.Lock()
+import Player
 
 
-# TODO compare same lvl of hands,action player raised, and the todos below that most important
+# TODO compare same lvl of hands
 
 class Table:
-    def __init__(self, players, small_blind_value, big_blind_value):
+    def __init__(self, small_blind_value, big_blind_value, starting_cash):
         self.pot = 0
-        self.players = players
-        self.players_remaining = [p.name for p in players]
+        self.players = {}
+        self.players_remaining = []
         self.small_blind_player = None  #
         self.big_blind_player = None
         self.dealer_button_player = None
@@ -32,7 +36,7 @@ class Table:
     def player_action(self, action, name):
         actions_parts = action.split()
         if actions_parts[0].lower() == "fold":
-            self.players[name].status = Status.FOLDED       #TODO "FOLD" LOOKS LIKE ITS FINISHED
+            self.players[name].status = Status.FOLDED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
             self.players_remaining.pop(name)
             self.players[name].bank_account.fold()
             if len(self.players_remaining) == 1:
@@ -40,7 +44,7 @@ class Table:
             else:
                 self.complete_player_turn()
 
-        elif actions_parts[0].lower() == "call":        #TODO "CALL" LOOKS LIKE ITS FINISHED
+        elif actions_parts[0].lower() == "call":  # TODO "CALL" LOOKS LIKE ITS FINISHED
             max_raise_yet = 0
             self.players[name].status = Status.CALLED
             for p in self.players:
@@ -52,10 +56,9 @@ class Table:
             self.complete_player_turn()
             return
         elif actions_parts[0].lower() == "raise":
-            self.players[name].status = Status.RAISED                   #TODO "FOLD" LOOKS LIKE ITS FINISHED
+            self.players[name].status = Status.RAISED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
             self.players[name].bank_account.raise_bet(actions_parts[1])
             self.pot += int(actions_parts[1])
-
 
     def complete_player_turn(self):
         if not self.is_round_over():
@@ -65,7 +68,14 @@ class Table:
         else:
             self.new_round()
         return
+
     ############## TABLE METHODS #################
+    def register_player(self, name):
+        lock.acquire()
+        self.players[name] = Player(name)
+        self.players_remaining.append(name)
+        lock.release()
+
     # TODO FINISHED
     def open_new_card(self):
         if len(self.cards_on_the_table) == 0:
@@ -79,24 +89,66 @@ class Table:
     def collect_blinds(self):
         self.players[self.small_blind_player].bank.call(self.small_blind_value)
         self.players[self.big_blind_player].bank.call(self.big_blind_value)
-    #TODO FINISHED
+
+    # TODO FINISHED
     def update_players_bank_after_mini_game(self, name):
         for p in self.players:
             p.bank_accout.fold()
         self.players[name].back_account.won_mini_game_update(self.pot)
 
+    # list(players.keys())[0]    ket first key
 
-    #TODO need to split the player to gruops by how mcuh they invested in the pot then check who won in each gruop
-    #TODO then start from the top down to see how to split the money (split to methods)
-    def winner_name(self):
-        if len(self.cards_on_the_table) == 3:
-            all_player_hand_strength = [p.hand.calculate_strength() for p in self.players]
-            sorter_ = lambda x: (x[0])  # lambda to sort by
-            sorted_l = sorted(all_player_hand_strength, key=sorter_)
-            while sorted_l[0][0] != sorted_l[len(sorted_l) - 1]:
-                sorted_l = sorted_l[1:]
-            if len(sorted_l) == 1:
-                return sorted_l[0]
+    def winner(self):
+        players_to_choose_from = []
+        for p in self.players:
+            if p.status != Status.FOLDED and p.status != Status.WAIT_FOR_TURN:
+                players_to_choose_from.append(p)
+
+        sorter_by_invest = lambda x: (x.bank_account.mini_game_invest)  # lambda to sort by lvl strength of hand
+        sorted_list_by_invest = sorted(players_to_choose_from, key=sorter_by_invest)
+        group_by_invest = {}
+        for p in players_to_choose_from:
+            if str(p.bank_accout.mini_game_invested) in players_to_choose_from.keys():
+                players_to_choose_from[str(p.bank_accout.mini_game_invested)].append(p)
+            else:
+                players_to_choose_from[str(p.bank_accout.mini_game_invested)] = []
+                players_to_choose_from[str(p.bank_accout.mini_game_invested)].append(p)
+
+        winner_from_each_group = []
+        for key in players_to_choose_from.keys():
+            group_with_same_invest = players_to_choose_from[key]
+
+        for group in group_with_same_invest:
+            for p in group
+        # TODO 1) split the sorted array by people with same money invested
+        #     2) get winner from each gruop
+        #     3) from top ask i won the top slice? (first round ofc) after that did i won from the the grop
+        # down if not i am out tand i teke winner from there and go on
+
+
+        if len(self.cards_on_the_table) == 3:  # array with who players = [(name0,[hand_power,param1,]),(name1,[hand_power,param1,])]
+            all_player_hand_strength = [{'name': p.name, 'hand_stats': p.hand.calculate_strength()} for p in
+                                        group_with_same_invest]
+            sorter_by_strength = lambda x: (x.hand_stats[0])  # lambda to sort by lvl strength of hand
+            sorted_list_by_total_hand = sorted(all_player_hand_strength, key=sorter_by_strength)
+            while sorted_list_by_total_hand[0][1][0] != \
+                    sorted_list_by_total_hand[len(sorted_list_by_total_hand) - 1][1][0]:
+                sorted_list_by_total_hand = sorted_list_by_total_hand[1:]
+            if len(sorted_list_by_total_hand) == 1:
+                return sorted_list_by_total_hand[0]
+            else:
+                sorter_by_strength_first_param = lambda x: (x[1][1])  # lambda to sort by the strength of card
+                sorted_list_by_first_param = sorted(sorted_list_by_total_hand, key=sorter_by_strength_first_param)
+                while sorted_list_by_first_param[0][1][1] != sorted_list_by_first_param[
+                    len(sorted_list_by_first_param) - 1][1][1]:
+                    sorted_list_by_first_param = sorted_list_by_first_param[1:]
+                if len(sorted_list_by_first_param) == 1:
+                    return sorted_list_by_first_param[0]
+                else:
+                    if sorted_list_by_first_param[0][1][0] == HandStrength.STRAIGHT_FLUSH:
+                        for o in sorter_by_strength_first_param:
+                            winner_from_each_group.append((o[0], self.players[o.name].back_account.mini_game_invest))
+
 
     # TODO FINISHED
     def switch_to_next_player(self):
@@ -108,13 +160,13 @@ class Table:
                 self.current_player = self.players_remaining[0]
             if self.players[self.current_player].status != Status.ALL_IN:
                 return
+
     ############# ROUND METHODS ###################
     # TODO FINISHED
     def new_round(self):
         self.open_new_card()
         for p in self.players:
             p.status = Status.WAIT_FOR_TURN
-
 
     # TODO FINISHED
     def end_round(self):
@@ -135,6 +187,7 @@ class Table:
             if self.players[n].status != Status.CHECKED:
                 return False
         return True
+
     # TODO FINISHED
     ########### MINI GAME METHODS ###############
     def new_mini_game(self):
@@ -144,7 +197,7 @@ class Table:
 
     # TODO FINISHED
     def end_mini_game(self):
-        winner = self.winner_name()
+        winner = self.winner()
         self.update_players_bank_after_mini_game(winner)
 
     # TODO FINISHED
