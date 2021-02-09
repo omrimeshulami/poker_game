@@ -1,13 +1,13 @@
 import Deck
 import random
-from Enums import Status, HandStrength
+from Enums import Status
 import threading
+import Player
+import functools
 
 lock = threading.Lock()
-import Player
 
 
-# TODO compare same lvl of hands
 
 class Table:
     def __init__(self, small_blind_value, big_blind_value, starting_cash):
@@ -25,6 +25,7 @@ class Table:
         self.cards_on_the_table = []
         self.player_turn_start = None
         self.current_player = self.dealer_button_player
+        self.starting_cash = starting_cash
 
     '''
     Actions:
@@ -72,7 +73,7 @@ class Table:
     ############## TABLE METHODS #################
     def register_player(self, name):
         lock.acquire()
-        self.players[name] = Player(name)
+        self.players[name] = Player(name, self.starting_cash)
         self.players_remaining.append(name)
         lock.release()
 
@@ -104,60 +105,28 @@ class Table:
             if p.status != Status.FOLDED and p.status != Status.WAIT_FOR_TURN:
                 players_to_choose_from.append(p)
 
-        sorter_by_invest = lambda x: (x.bank_account.mini_game_invest)  # lambda to sort by lvl strength of hand
-        sorted_list_by_invest = sorted(players_to_choose_from, key=sorter_by_invest)
         group_by_invest = {}
-        for p in players_to_choose_from:
-            if str(p.bank_accout.mini_game_invested) in players_to_choose_from.keys():
-                players_to_choose_from[str(p.bank_accout.mini_game_invested)].append(p)
-            else:
-                players_to_choose_from[str(p.bank_accout.mini_game_invested)] = []
-                players_to_choose_from[str(p.bank_accout.mini_game_invested)].append(p)
+        for p in players_to_choose_from:  # seet the dict with key of iveste and empy array
+            group_by_invest[p.bank_accout.mini_game_invest] = []
+        for p in players_to_choose_from:  # inest values to the array
+            group_by_invest[str(p.bank_accout.mini_game_invest)].append(
+                {'name': p.name, 'hand_rank': p.hand.calculate_strength(self.cards_on_the_table),
+                 'money_invest': p.bank_accout.mini_game_invest})
 
-        winner_from_each_group = []
-        for key in players_to_choose_from.keys():
-            group_with_same_invest = players_to_choose_from[key]
+        for key in group_by_invest.keys():
+            functools.reduce(lambda a, b: a if a.hand_rank > b.hand_rank else b, group_by_invest[key])
+        players_to_choose_from = []
+        for key in group_by_invest.keys():
+            players_to_choose_from.append(group_by_invest[key][0])
 
-        for group in group_with_same_invest:
-            for p in group
-        # TODO 1) split the sorted array by people with same money invested
-        #     2) get winner from each gruop
-        #     3) from top ask i won the top slice? (first round ofc) after that did i won from the the grop
-        # down if not i am out tand i teke winner from there and go on
-
-
-        if len(self.cards_on_the_table) == 3:  # array with who players = [(name0,[hand_power,param1,]),(name1,[hand_power,param1,])]
-            all_player_hand_strength = [{'name': p.name, 'hand_stats': p.hand.calculate_strength()} for p in
-                                        group_with_same_invest]
-            sorter_by_strength = lambda x: (x.hand_stats[0])  # lambda to sort by lvl strength of hand
-            sorted_list_by_total_hand = sorted(all_player_hand_strength, key=sorter_by_strength)
-            while sorted_list_by_total_hand[0][1][0] != \
-                    sorted_list_by_total_hand[len(sorted_list_by_total_hand) - 1][1][0]:
-                sorted_list_by_total_hand = sorted_list_by_total_hand[1:]
-            if len(sorted_list_by_total_hand) == 1:
-                return sorted_list_by_total_hand[0]
-            else:
-                sorter_by_strength_first_param = lambda x: (x[1][1])  # lambda to sort by the strength of card
-                sorted_list_by_first_param = sorted(sorted_list_by_total_hand, key=sorter_by_strength_first_param)
-                while sorted_list_by_first_param[0][1][1] != sorted_list_by_first_param[
-                    len(sorted_list_by_first_param) - 1][1][1]:
-                    sorted_list_by_first_param = sorted_list_by_first_param[1:]
-                if len(sorted_list_by_first_param) == 1:
-                    return sorted_list_by_first_param[0]
-                else:
-                    if sorted_list_by_first_param[0][1][0] == HandStrength.STRAIGHT_FLUSH:
-                        for o in sorter_by_strength_first_param:
-                            winner_from_each_group.append((o[0], self.players[o.name].back_account.mini_game_invest))
-
+        players_to_choose_from.sort(key=lambda x: x['hand_rank'], reverse=True)
+        # TODO i have until here array of the groups winners ordered by hand rank
 
     # TODO FINISHED
     def switch_to_next_player(self):
         while True:
-            if self.players_remaining.index(self.current_player) + 1 <= len(self.players_remaining) - 1:
-                self.current_player = self.players_remaining[
-                    self.players_remaining.index(self.current_player) + 1]
-            else:
-                self.current_player = self.players_remaining[0]
+            self.current_player = self.players_remaining[
+                self.players_remaining.index(self.current_player) + 1 % len(self.players_remaining)]
             if self.players[self.current_player].status != Status.ALL_IN:
                 return
 
@@ -246,33 +215,14 @@ class Table:
             if self.small_blind_player != self.players_remaining[0]:
                 self.small_blind_player = self.players_remaining[0]
                 self.big_blind_player = self.players_remaining[1]
+                self.current_player = self.players_remaining[0]
         else:
             # if we have enough room to move the buttons
-            if self.players_remaining.index(self.dealer_button_player) + 3 <= len(self.players_remaining) - 1:
-                self.dealer_button_player = self.players_remaining[
-                    self.players_remaining.index(self.dealer_button_player) + 1]
-                self.small_blind_player = self.players_remaining[
-                    self.players_remaining.index(self.dealer_button_player) + 2]
-                self.big_blind_player = self.players_remaining[
-                    self.players_remaining.index(self.dealer_button_player) + 3]
-
-            # if we missing 1 space in the array move the buttons
-            if self.players_remaining.index(self.dealer_button_player) + 2 <= len(self.players_remaining) - 1:
-                self.dealer_button_player = self.players_remaining[
-                    self.players_remaining.index(self.dealer_button_player) + 1]
-                self.small_blind_player = self.players_remaining[
-                    self.players_remaining.index(self.dealer_button_player) + 2]
-                self.big_blind_player = self.players_remaining[0]
-
-            # if we missing 2 space in the array move the buttons
-            if self.players_remaining.index(self.dealer_button_player) + 1 <= len(self.players_remaining) - 1:
-                self.dealer_button_player = self.players_remaining[
-                    self.players_remaining.index(self.dealer_button_player) + 1]
-                self.small_blind_player = self.players_remaining[0]
-                self.big_blind_player = self.players_remaining[1]
-
-            # if we missing 3 space in the array move the buttons
-            if self.players_remaining.index(self.dealer_button_player) <= len(self.players_remaining) - 1:
-                self.dealer_button_player = self.players_remaining[0]
-                self.small_blind_player = self.players_remaining[1]
-                self.big_blind_player = self.players_remaining[2]
+            self.dealer_button_player = self.players_remaining[
+                self.players_remaining.index(self.dealer_button_player) + 1 % len(self.players)]
+            self.small_blind_player = self.players_remaining[
+                self.players_remaining.index(self.small_blind_player) + 1 % len(self.players)]
+            self.big_blind_player = self.players_remaining[
+                self.players_remaining.index(self.big_blind_player) + 1 % len(self.players)]
+            self.current_player = self.players_remaining[
+                self.players_remaining.index(self.dealer_button_player) + 1 % len(self.players)]

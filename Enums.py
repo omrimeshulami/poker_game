@@ -35,7 +35,7 @@ class Status(Enum):
 
 class TableStatus(Enum):
     NOT_READY = 'NOT_READY'
-    READY = 'READY  '
+    READY = 'READY'
 
 
 class HandStrength(Enum):

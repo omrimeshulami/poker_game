@@ -6,12 +6,7 @@ import Player
 
 class Deck:
     def __init__(self):
-        self.deck = []
-        for i in range(1, 15):
-            self.deck.append(Card(i, Symbol.HEARTS))
-            self.deck.append(Card(i, Symbol.SPADES))
-            self.deck.append(Card(i, Symbol.CLUBS))
-            self.deck.append(Card(i, Symbol.DIAMONDS))
+        self.deck = self.shuffle()
 
         random.shuffle(self.deck)
 
@@ -38,12 +33,13 @@ class Deck:
             players[i].hand.second = self.deck[len(self.deck) - 1:]  # DEAL ONE CARD TO EACH PLAYER
             self.deck = self.deck[:-1]
 
-    def new_mini_game(self):
-        self.deck = []
+    def shuffle(self):
+        deck = []
         for i in range(1, 15):
-            self.deck.append(Card(i, Symbol.HEARTS))
-            self.deck.append(Card(i, Symbol.SPADES))
-            self.deck.append(Card(i, Symbol.CLUBS))
-            self.deck.append(Card(i, Symbol.DIAMONDS))
+            deck.append(Card(i, Symbol.HEARTS))
+            deck.append(Card(i, Symbol.SPADES))
+            deck.append(Card(i, Symbol.CLUBS))
+            deck.append(Card(i, Symbol.DIAMONDS))
 
         random.shuffle(self.deck)
+        return deck

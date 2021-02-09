@@ -1,6 +1,7 @@
 from collections import defaultdict
 from Enums import CardValue, HandStrength
 import numpy as np
+import itertools
 
 
 class PlayerHand:
@@ -8,54 +9,46 @@ class PlayerHand:
         self.first = None
         self.second = None
 
-    def calculate_hand_rank(self, strength, hand):
-        return 10000000000 * strength + 100000000 * hand[0] + 1000000 * hand[1] + 10000 + hand[2] + 100 + hand[3] + 1 + \
-               hand[4]
-
-    def calculate_strength(self, other_three_cards):  # TODO add each method all the hand info
-        hand = [self.first, self.second].append(other_three_cards)
-        result = check_straight_flush(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.STRAIGHT_FLUSH,
-                                            [result[1], result[1] - 1, result[1] - 2, result[1] - 3, result[1] - 4])
-        result = check_four_of_a_kind(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.FOUR_OF_KIND,
-                                            [result[1], result[1], result[1], result[1], result[2]])
-        result = check_full_house(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.FULL_HOUSE,
-                                            [result[1], result[1], result[1], result[2], result[2]])
-        result = check_flush(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.FLUSH,
-                                            [result[1], result[1] - 1, result[1] - 2, result[1] - 3, result[1] - 4])
-        result = check_straight(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.STRAIGHT,
-                                            [result[1], result[1] - 1, result[1] - 2, result[1] - 3, result[1] - 4])
-        result = check_three_of_a_kind(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.THREE_OF_KIND,
-                                            [result[1], result[1], result[1], result[2], result[3]])
-        result = check_two_pairs(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.TWO_PAIRS,
-                                            [result[1], result[1], result[2], result[2], result[3]])
-        result = check_one_pairs(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.PAIR,
-                                            np.concatenate([result[1], result[1]],result[2]))
-        result = check_high_card(hand)
-        if result[0]:
-            return self.calculate_hand_rank(HandStrength.HIGH_CARD,
-                                            np.concatenate([result[1], result[1]], result[2]))
+    def calculate_strength(self, cards_on_the_table):
+        strongest_hand_rank = 0
+        for combination in itertools.combinations(cards_on_the_table, 3):
+            hand = [self.first, self.second].append(combination)
+            result = check_straight_flush(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_four_of_a_kind(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_full_house(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_flush(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_straight(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_three_of_a_kind(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_two_pairs(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_one_pairs(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+            result = check_high_card(hand)
+            if result[0] and strongest_hand_rank < result[1]:
+                strongest_hand_rank = result[1]
+        return strongest_hand_rank
 
 
 def check_straight_flush(hand):
     result = check_straight(hand)
     if check_flush(hand) and result[0]:
-        return [True, result[1]]
+        return [True, calculate_hand_rank(HandStrength.STRAIGHT_FLUSH,
+                                          [result[1], result[1] - 1, result[1] - 2, result[1] - 3,
+                                           result[1] - 4])]
     else:
         return False
 
@@ -73,9 +66,11 @@ def check_four_of_a_kind(hand):
             if value_counts[i] == 1:
                 high_card = i
 
-        return [True, forth_of_a_kind_value, high_card]
+        return [True, calculate_hand_rank(HandStrength.FOUR_OF_KIND, [
+            forth_of_a_kind_value, forth_of_a_kind_value, forth_of_a_kind_value,
+            forth_of_a_kind_value, high_card])]
 
-    return False
+        return False
 
 
 def check_full_house(hand):
@@ -89,7 +84,8 @@ def check_full_house(hand):
                 pairs_value = i
             if value_counts[i] == 3:
                 three_value = i
-        return [True, three_value, pairs_value]
+        return [True, calculate_hand_rank(HandStrength.FULL_HOUSE,
+                                          three_value, three_value, three_value, pairs_value, pairs_value)]
     return False
 
 
@@ -102,7 +98,9 @@ def check_flush(hand):
             value_counts[v] += 1
         rank_values = [CardValue[i] for i in values]
 
-        return [True, max(rank_values)]
+        return [True, calculate_hand_rank(HandStrength.FLUSH,
+                                          [max(rank_values), max(rank_values) - 1, max(rank_values) - 2,
+                                           max(rank_values) - 3, max(rank_values) - 4])]
     else:
         return False
 
@@ -119,7 +117,9 @@ def check_straight(hand):
     else:
         # check straight with low Ace
         if set(values) == set(["A", "TWO", "TREE", "FOUR", "FIVE"]):
-            return [True, max(rank_values)]
+            return [True, calculate_hand_rank(HandStrength.STRAIGHT,
+                                              [max(rank_values), max(rank_values) - 1, max(rank_values) - 2,
+                                               max(rank_values) - 3, max(rank_values) - 4])]
         return False
 
 
@@ -137,9 +137,12 @@ def check_three_of_a_kind(hand):
             if value_counts[i] == 1 and i != first_card:
                 second_card = i
         if first_card > second_card:
-            return [True, three_value, first_card, second_card]
+            return [True, calculate_hand_rank(HandStrength.THREE_OF_KIND,
+                                              [three_value, three_value, three_value, first_card, second_card])]
         else:
-            return [True, three_value, second_card, first_card]
+            return [True, three_value, calculate_hand_rank(HandStrength.THREE_OF_KIND,
+                                                           [three_value, three_value, three_value, second_card,
+                                                            first_card])]
 
     return False
 
@@ -158,9 +161,13 @@ def check_two_pairs(hand):
             if value_counts[i] == 1:
                 high_card = i
         if first_pair_value > second_pair_value:
-            return [True, first_pair_value, second_pair_value, high_card]
+            return [True, calculate_hand_rank(HandStrength.TWO_PAIRS,
+                                              [first_pair_value, first_pair_value, second_pair_value, second_pair_value,
+                                               high_card])]
         else:
-            return [True, second_pair_value, first_pair_value, high_card]
+            return [True, calculate_hand_rank(HandStrength.TWO_PAIRS,
+                                              [second_pair_value, second_pair_value, first_pair_value, first_pair_value,
+                                               high_card])]
     return False
 
 
@@ -176,7 +183,9 @@ def check_one_pairs(hand):
                 pairs_value = i
             if value_counts[i] == 1:
                 free_cards.append(i)
-        return [True, pairs_value, free_cards.sort(reverse=True)]
+        return [True, calculate_hand_rank(HandStrength.PAIR,
+                                          np.concatenate([pairs_value, pairs_value], free_cards.sort(reverse=True)))
+                ]
     return False
 
 
@@ -190,4 +199,9 @@ def check_high_card(hand):
         for i in len(value_counts):
             if value_counts[i] == 1:
                 free_cards.append(i)
-                return [True, free_cards.sort(reverse=True)]
+    return [True, calculate_hand_rank(HandStrength.HIGH_CARD, free_cards.sort(reverse=True))]
+
+
+def calculate_hand_rank(strength, hand):
+    return 10000000000 * strength + 100000000 * hand[0] + 1000000 * hand[1] + 10000 + hand[2] + 100 + hand[3] + 1 + \
+           hand[4]
