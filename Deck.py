@@ -8,8 +8,6 @@ class Deck:
     def __init__(self):
         self.deck = self.shuffle()
 
-        random.shuffle(self.deck)
-
     def the_flop(self):
         card_to_reveal = self.deck[-3:]
         self.deck = self.deck[:-4]
@@ -18,11 +16,12 @@ class Deck:
     def the_turn(self):
         card_to_reveal = self.deck[-1:]
         self.deck = self.deck[:-2]
-        return card_to_reveal
+        return card_to_reveal[0]
 
     def the_river(self):
         card_to_reveal = self.deck[-1:]
-        return card_to_reveal
+        self.deck = self.deck[:-2]
+        return card_to_reveal[0]
 
     def deal_cards(self, players):
         for i in range(0, len(players)):
@@ -35,11 +34,11 @@ class Deck:
 
     def shuffle(self):
         deck = []
-        for i in range(1, 15):
-            deck.append(Card(i, Symbol.HEARTS))
-            deck.append(Card(i, Symbol.SPADES))
-            deck.append(Card(i, Symbol.CLUBS))
-            deck.append(Card(i, Symbol.DIAMONDS))
+        for i in range(2, 15):
+            deck.append(Card(i, Symbol.HEARTS.name))
+            deck.append(Card(i, Symbol.SPADES.name))
+            deck.append(Card(i, Symbol.CLUBS.name))
+            deck.append(Card(i, Symbol.DIAMONDS.name))
 
-        random.shuffle(self.deck)
+        random.shuffle(deck)
         return deck

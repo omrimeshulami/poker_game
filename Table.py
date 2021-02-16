@@ -4,9 +4,9 @@ from Enums import Status
 import threading
 import Player
 import functools
+import numpy as np
 
 lock = threading.Lock()
-
 
 
 class Table:
@@ -80,7 +80,7 @@ class Table:
     # TODO FINISHED
     def open_new_card(self):
         if len(self.cards_on_the_table) == 0:
-            self.cards_on_the_table.append(self.deck.the_flop())
+            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_flop()))
         elif len(self.cards_on_the_table) == 3:
             self.cards_on_the_table.append(self.deck.the_turn())
         else:
