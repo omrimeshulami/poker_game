@@ -1,10 +1,11 @@
-import Deck
+from Deck import Deck
 import random
 from Enums import Status
 import threading
-import Player
+from Player import Player
 import functools
 import numpy as np
+from collections import defaultdict
 
 lock = threading.Lock()
 
@@ -14,17 +15,15 @@ class Table:
         self.pot = 0
         self.players = {}
         self.players_remaining = []
-        self.small_blind_player = None  #
-        self.big_blind_player = None
-        self.dealer_button_player = None
+        self.small_blind_player = ""  #
+        self.big_blind_player = ""
+        self.dealer_button_player = ""
         self.small_blind_value = small_blind_value
         self.big_blind_value = big_blind_value
-        self.deck = Deck.Deck()
-        self.init_buttons()
-        self.collect_blinds()
+        self.deck = Deck()
         self.cards_on_the_table = []
-        self.player_turn_start = None
-        self.current_player = self.dealer_button_player
+        self.player_who_started_the_round = ""
+        self.current_player = ""
         self.starting_cash = starting_cash
 
     '''
@@ -38,7 +37,7 @@ class Table:
         actions_parts = action.split()
         if actions_parts[0].lower() == "fold":
             self.players[name].status = Status.FOLDED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
-            self.players_remaining.pop(name)
+            self.players_remaining.remove(name)
             self.players[name].bank_account.fold()
             if len(self.players_remaining) == 1:
                 self.end_mini_game()
@@ -73,11 +72,20 @@ class Table:
     ############## TABLE METHODS #################
     def register_player(self, name):
         lock.acquire()
-        self.players[name] = Player(name, self.starting_cash)
-        self.players_remaining.append(name)
+        player = Player(name, self.starting_cash)
+        self.players[name] = player
         lock.release()
 
-    # TODO FINISHED
+    def init_table(self):
+        self.new_mini_game()
+        self.run_game()
+
+    def run_game(self):
+        while len(self.players_remaining) > 1 and not self.is_mini_game_over():
+            action = input(
+                f'{self.current_player} turn:\n Hand:{self.players[self.current_player].hand.print_hand()}  Enter your action:Actions:\nFOLD: fold\nCALL: call\nRAISE: raise 100\n')
+            self.player_action(action, self.current_player)
+
     def open_new_card(self):
         if len(self.cards_on_the_table) == 0:
             self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_flop()))
@@ -88,8 +96,10 @@ class Table:
 
     # TODO FINISHED
     def collect_blinds(self):
-        self.players[self.small_blind_player].bank.call(self.small_blind_value)
-        self.players[self.big_blind_player].bank.call(self.big_blind_value)
+        self.players[self.small_blind_player].bank_account.call(self.small_blind_value)
+        self.pot += self.small_blind_value
+        self.pot += self.players[self.big_blind_player].bank_account.call(self.big_blind_value)
+        self.pot += self.big_blind_value
 
     # TODO FINISHED
     def update_players_bank_after_mini_game(self, name):
@@ -100,6 +110,7 @@ class Table:
     # list(players.keys())[0]    ket first key
 
     def winner(self):
+        text = ""
         players_to_choose_from = []
         for p in self.players:
             if p.status != Status.FOLDED and p.status != Status.WAIT_FOR_TURN:
@@ -112,15 +123,37 @@ class Table:
             group_by_invest[str(p.bank_accout.mini_game_invest)].append(
                 {'name': p.name, 'hand_rank': p.hand.calculate_strength(self.cards_on_the_table),
                  'money_invest': p.bank_accout.mini_game_invest})
-
+        # TODO will need to add the case if there are two peple with same hand power with the same invest
         for key in group_by_invest.keys():
-            functools.reduce(lambda a, b: a if a.hand_rank > b.hand_rank else b, group_by_invest[key])
+            max = functools.reduce(lambda a, b: a if a.hand_rank > b.hand_rank else b, group_by_invest[key])
+            for i in key:
+                if key[i]['hand_rank'] != max:
+                    key.pop(i)
         players_to_choose_from = []
         for key in group_by_invest.keys():
-            players_to_choose_from.append(group_by_invest[key][0])
+            players_to_choose_from = np.concatenate((players_to_choose_from, group_by_invest[key]))
 
-        players_to_choose_from.sort(key=lambda x: x['hand_rank'], reverse=True)
-        # TODO i have until here array of the groups winners ordered by hand rank
+        player_ordered_by_rank = players_to_choose_from.sort(key=lambda x: x['hand_rank'], reverse=True)
+        player_ordered_by_invest = players_to_choose_from.sort(key=lambda x: x['money_invest'], reverse=True)
+        invest_counts = defaultdict(lambda: 0)
+        for p in players_to_choose_from:
+            invest_counts[p['money_invest']] += 1
+        hand_rank_counts = defaultdict(lambda: 0)
+        for p in players_to_choose_from:
+            hand_rank_counts[p['hand_rank']] += 1
+        while players_to_choose_from != []:
+            player_to_check = player_ordered_by_rank[0]
+            pot_for_the_winner = 0
+            if hand_rank_counts[player_to_check['hand_rank']] == 1:
+                for p in self.players:
+                    if p.bank_accout.mini_game_invest <= player_to_check['money_invest']:
+                        pot_for_the_winner += p.bank_accout.mini_game_invest
+                        if player_ordered_by_rank.contained(p):
+                            player_ordered_by_invest.remove(p)  # TODO 100% wrong syntax
+                            player_ordered_by_rank.remoce(p)  # TODO 100% wrong syntax
+                        p.bank_accout.fold()
+                self.players[player_to_check['name']].bank_account.won_mini_game_update(pot_for_the_winner)
+                text += "the name of the player , hand rank and pot"
 
     # TODO FINISHED
     def switch_to_next_player(self):
@@ -160,14 +193,25 @@ class Table:
     # TODO FINISHED
     ########### MINI GAME METHODS ###############
     def new_mini_game(self):
-        self.deck = Deck.Deck()
+        for p in self.players.keys():
+            print(p)
+            if self.players[p].bank_account.total_cash > 0:
+                self.players_remaining.append(self.players[p].name)
+        self.deck = Deck()
         self.pot = 0
-        self.update_buttons()
+        if self.small_blind_player == "":
+            self.init_buttons()
+        else:
+            self.update_buttons()
+        self.deck.deal_cards(self.players)
+        self.collect_blinds()
+        self.table_status()
 
     # TODO FINISHED
     def end_mini_game(self):
         winner = self.winner()
         self.update_players_bank_after_mini_game(winner)
+        self.new_mini_game()
 
     # TODO FINISHED
     def is_mini_game_over(self):
@@ -180,14 +224,15 @@ class Table:
     # TODO FINISHED
     def table_status(self):
         text = ''
+        players_cash = ""
         text += f'Pot: {self.pot}\n'
         text += f'Dealer Button: {self.dealer_button_player}\n'
         text += f'Small blind: {self.small_blind_player}\n'
         text += f'Big blind:: {self.big_blind_player}\n'
-        for player in enumerate(self.players):
-            players_cash = f'{player.name}:\t\t{player.bank.max_bet}\n'
+        for key in self.players.keys():
+            players_cash += f'{self.players[key].name}:\tCash:{self.players[key].bank_account.max_bet},\tStatus:{self.players[key].status}\n'
         text += players_cash
-        return
+        print(text)
 
     ################ GETTERS ###################
     # TODO FINISHED
@@ -197,17 +242,19 @@ class Table:
     ############## BUTTON METHODS ##############
     # TODO FINISHED
     def init_buttons(self):
-        random.shuffle(self.players)
+        random.shuffle(self.players_remaining)
         if len(self.players_remaining) == 2:
-            self.small_blind_player = self.players[0]
-            self.big_blind_player = self.players[1]
-            self.player_turn_start = self.players[0]
+            self.small_blind_player = self.players_remaining[0]
+            self.big_blind_player = self.players_remaining[1]
+            self.player_who_started_the_round = self.players_remaining[0]
+            self.current_player = self.players_remaining[0]
 
         else:
-            self.dealer_button_player = self.players[0]
-            self.small_blind_player = self.players[1]
-            self.big_blind_player = self.players[2]
-            self.player_turn_start = self.players[0]
+            self.dealer_button_player = self.players_remaining[0]
+            self.small_blind_player = self.players_remaining[1]
+            self.big_blind_player = self.players_remaining[2]
+            self.player_who_started_the_round = self.players_remaining[0]
+            self.current_player = self.players_remaining[0]
 
     # TODO FINISHED
     def update_buttons(self):
@@ -216,6 +263,8 @@ class Table:
                 self.small_blind_player = self.players_remaining[0]
                 self.big_blind_player = self.players_remaining[1]
                 self.current_player = self.players_remaining[0]
+                self.player_who_started_the_round = self.players_remaining[0]
+
         else:
             # if we have enough room to move the buttons
             self.dealer_button_player = self.players_remaining[
@@ -225,4 +274,6 @@ class Table:
             self.big_blind_player = self.players_remaining[
                 self.players_remaining.index(self.big_blind_player) + 1 % len(self.players)]
             self.current_player = self.players_remaining[
+                self.players_remaining.index(self.dealer_button_player) + 1 % len(self.players)]
+            self.player_who_started_the_round = self.players_remaining[
                 self.players_remaining.index(self.dealer_button_player) + 1 % len(self.players)]

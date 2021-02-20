@@ -24,12 +24,12 @@ class Deck:
         return card_to_reveal[0]
 
     def deal_cards(self, players):
-        for i in range(0, len(players)):
-            players[i].hand.first = self.deck[len(self.deck) - 1:]  # DEAL ONE CARD TO EACH PLAYER
+        for key in players:
+            players[key].hand.first = self.deck[len(self.deck) - 1]  # DEAL ONE CARD TO EACH PLAYER
             self.deck = self.deck[:-1]
 
-        for i in range(0, len(players)):
-            players[i].hand.second = self.deck[len(self.deck) - 1:]  # DEAL ONE CARD TO EACH PLAYER
+        for key in players:
+            players[key].hand.second = self.deck[len(self.deck) - 1]  # DEAL ONE CARD TO EACH PLAYER
             self.deck = self.deck[:-1]
 
     def shuffle(self):

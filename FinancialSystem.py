@@ -25,9 +25,13 @@ class FinancialSystem:
 
     def fold(self):
         self.total_cash -= self.mini_game_invest
-        self.mini_game_invest = 0
-        self.round_invest = 0
         self.max_bet = self.total_cash
+
+    def new_mini_game(self):
+        self.total_cash -= self.mini_game_invest
+        self.max_bet = self.total_cash
+        self.round_invest = 0  # after each card
+        self.mini_game_invest = 0  # sum after each card
 
     def new_round(self):
         self.mini_game_invest += self.round_invest
