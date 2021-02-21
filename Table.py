@@ -33,40 +33,48 @@ class Table:
     RAISE: "raise 100"
      '''
 
-    def player_action(self, action, name):
+    def player_action(self, action):
         actions_parts = action.split()
         if actions_parts[0].lower() == "fold":
-            self.players[name].status = Status.FOLDED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
-            self.players_remaining.remove(name)
-            self.players[name].bank_account.fold()
+            current_player_index = self.players_remaining.index(self.current_player)
+            self.players[self.current_player].status = Status.FOLDED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
+            self.players_remaining.remove(self.current_player)
+            self.players[self.current_player].bank_account.fold()
             if len(self.players_remaining) == 1:
                 self.end_mini_game()
+                return True
             else:
-                self.complete_player_turn()
+                self.complete_player_turn_and_switch_player(True, current_player_index)
+                return True
 
         elif actions_parts[0].lower() == "call":  # TODO "CALL" LOOKS LIKE ITS FINISHED
             max_raise_yet = 0
-            self.players[name].status = Status.CALLED
-            for p in self.players:
-                if p.bank_accout.round_invested > max_raise_yet:
-                    max_raise_yet = p.bank_accout.round_invested
-            if self.players[name].bank_account.need_all_in(max_raise_yet):
-                self.players[name].staus = Status.ALL_IN
-            self.players[name].bank_account.call(max_raise_yet)
-            self.complete_player_turn()
-            return
-        elif actions_parts[0].lower() == "raise":
-            self.players[name].status = Status.RAISED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
-            self.players[name].bank_account.raise_bet(actions_parts[1])
+            self.players[self.current_player].status = Status.CALLED
+            for name in self.players_remaining:
+                if self.players[name].bank_account.round_invested > max_raise_yet:
+                    max_raise_yet = self.players[name].bank_account.round_invested
+                    print(max_raise_yet)
+            if self.players[self.current_player].bank_account.need_all_in(max_raise_yet):
+                self.players[self.current_player].staus = Status.ALL_IN
+            self.players[self.current_player].bank_account.call(
+                max_raise_yet - self.players[self.current_player].bank_account.round_invested)
+            self.complete_player_turn_and_switch_player(False, 0)
+            return True
+        elif actions_parts[0].lower() == "raise" and len(actions_parts) == 2 and actions_parts[1].isnumeric():
+            self.players[self.current_player].status = Status.RAISED  # TODO "FOLD" LOOKS LIKE ITS FINISHED
+            self.players[self.current_player].bank_account.raise_bet(actions_parts[1])
             self.pot += int(actions_parts[1])
+            self.complete_player_turn_and_switch_player(False, 0)
+            return True
+        return False
 
-    def complete_player_turn(self):
-        if not self.is_round_over():
-            self.switch_to_next_player()
+    def complete_player_turn_and_switch_player(self, is_folded, index):
+        if self.is_round_over(is_folded, index):
+            self.new_round()
         elif self.is_mini_game_over():
             self.new_mini_game()
         else:
-            self.new_round()
+            self.switch_to_next_player(is_folded, index)
         return
 
     ############## TABLE METHODS #################
@@ -82,23 +90,25 @@ class Table:
 
     def run_game(self):
         while len(self.players_remaining) > 1 and not self.is_mini_game_over():
+            self.table_status()
             action = input(
-                f'{self.current_player} turn:\n Hand:{self.players[self.current_player].hand.print_hand()}  Enter your action:Actions:\nFOLD: fold\nCALL: call\nRAISE: raise 100\n')
-            self.player_action(action, self.current_player)
+                f'{self.current_player} turn:\n Hand:{self.players[self.current_player].hand.print_hand()}\n  Enter your action:Actions:\nFOLD: fold\nCALL: call\nRAISE: raise 100\n')
+            if self.player_action(action) == False:
+                print(f'ILLIGAL ACTION PLEASE TRY AGAIN')
 
     def open_new_card(self):
         if len(self.cards_on_the_table) == 0:
             self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_flop()))
         elif len(self.cards_on_the_table) == 3:
-            self.cards_on_the_table.append(self.deck.the_turn())
+            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_turn()))
         else:
-            self.cards_on_the_table.append(self.deck.the_river())
+            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
 
     # TODO FINISHED
     def collect_blinds(self):
         self.players[self.small_blind_player].bank_account.call(self.small_blind_value)
         self.pot += self.small_blind_value
-        self.pot += self.players[self.big_blind_player].bank_account.call(self.big_blind_value)
+        self.players[self.big_blind_player].bank_account.call(self.big_blind_value)
         self.pot += self.big_blind_value
 
     # TODO FINISHED
@@ -113,7 +123,7 @@ class Table:
         text = ""
         players_to_choose_from = []
         for p in self.players:
-            if p.status != Status.FOLDED and p.status != Status.WAIT_FOR_TURN:
+            if p.status != Status.FOLDED.value and p.status != Status.WAIT_FOR_TURN.value:
                 players_to_choose_from.append(p)
 
         group_by_invest = {}
@@ -156,19 +166,24 @@ class Table:
                 text += "the name of the player , hand rank and pot"
 
     # TODO FINISHED
-    def switch_to_next_player(self):
+    def switch_to_next_player(self, is_folded, index):
         while True:
-            self.current_player = self.players_remaining[
-                self.players_remaining.index(self.current_player) + 1 % len(self.players_remaining)]
-            if self.players[self.current_player].status != Status.ALL_IN:
-                return
+            if is_folded:
+                self.current_player = self.players_remaining[index]
+                if self.players[self.current_player].status != Status.ALL_IN:
+                    return
+            else:
+                self.current_player = self.players_remaining[
+                    (self.players_remaining.index(self.current_player) + 1) % len(self.players_remaining)]
+                if self.players[self.current_player].status != Status.ALL_IN:
+                    return
 
     ############# ROUND METHODS ###################
     # TODO FINISHED
     def new_round(self):
         self.open_new_card()
-        for p in self.players:
-            p.status = Status.WAIT_FOR_TURN
+        for key in self.players.keys():
+            self.players[key].status = Status.WAIT_FOR_TURN.value
 
     # TODO FINISHED
     def end_round(self):
@@ -178,16 +193,27 @@ class Table:
 
     # the idea check if every one in the table is check or everyone is check and the next player is rasied
     # TODO FINISHED
-    def is_round_over(self):
-        next_player_name = self.players_remaining[
-            self.players_remaining.index(self.current_player) + 1]
-        if self.players[next_player_name].status == Status.RAISED:
-            for n in self.players_remaining:
-                if self.players[n].status != Status.CALLED and n != next_player_name:
-                    return False
-        for n in self.players_remaining:
-            if self.players[n].status != Status.CHECKED:
+    def is_round_over(self, is_folded, index):
+        if is_folded:
+            print(index)
+            print(len(self.players_remaining))
+            if index != len(self.players_remaining) - 1:
+                self.current_player = self.players_remaining[index]
                 return False
+            else:
+                self.current_player = self.players_remaining[0]
+                return False
+        else:
+            next_player_name = self.players_remaining[
+                (self.players_remaining.index(self.current_player) + 1) % len(self.players_remaining)]
+            if self.players[next_player_name].status == Status.RAISED:
+                for n in self.players_remaining:
+                    if self.players[n].status != Status.CALLED and n != next_player_name:
+                        return False
+            else:
+                for n in self.players_remaining:
+                    if self.players[n].status != Status.CHECKED:
+                        return False
         return True
 
     # TODO FINISHED
@@ -205,7 +231,6 @@ class Table:
             self.update_buttons()
         self.deck.deal_cards(self.players)
         self.collect_blinds()
-        self.table_status()
 
     # TODO FINISHED
     def end_mini_game(self):
@@ -225,10 +250,14 @@ class Table:
     def table_status(self):
         text = ''
         players_cash = ""
+        table_cards = "Card On The Table: "
         text += f'Pot: {self.pot}\n'
         text += f'Dealer Button: {self.dealer_button_player}\n'
-        text += f'Small blind: {self.small_blind_player}\n'
-        text += f'Big blind:: {self.big_blind_player}\n'
+        text += f'Small Blind: {self.small_blind_player}\n'
+        text += f'Big Blind: {self.big_blind_player}\n'
+        for i in range(0, len(self.cards_on_the_table)):
+            table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
+        text += f'{table_cards}\n'
         for key in self.players.keys():
             players_cash += f'{self.players[key].name}:\tCash:{self.players[key].bank_account.max_bet},\tStatus:{self.players[key].status}\n'
         text += players_cash

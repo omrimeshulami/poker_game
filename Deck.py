@@ -16,12 +16,12 @@ class Deck:
     def the_turn(self):
         card_to_reveal = self.deck[-1:]
         self.deck = self.deck[:-2]
-        return card_to_reveal[0]
+        return card_to_reveal
 
     def the_river(self):
         card_to_reveal = self.deck[-1:]
         self.deck = self.deck[:-2]
-        return card_to_reveal[0]
+        return card_to_reveal
 
     def deal_cards(self, players):
         for key in players:
