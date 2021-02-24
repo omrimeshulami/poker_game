@@ -35,10 +35,10 @@ class Deck:
     def shuffle(self):
         deck = []
         for i in range(2, 15):
-            deck.append(Card(i, Symbol.HEARTS.name))
-            deck.append(Card(i, Symbol.SPADES.name))
-            deck.append(Card(i, Symbol.CLUBS.name))
-            deck.append(Card(i, Symbol.DIAMONDS.name))
+            deck.append(Card(i, Symbol.HEARTS.value))
+            deck.append(Card(i, Symbol.SPADES.value))
+            deck.append(Card(i, Symbol.CLUBS.value))
+            deck.append(Card(i, Symbol.DIAMONDS.value))
 
         random.shuffle(deck)
         return deck

@@ -16,10 +16,6 @@ class PlayerHand:
             if strongest_hand_rank < get_hand_combination_strength(hand):
                 strongest_hand_rank = get_hand_combination_strength(hand)
         for combination in itertools.combinations(cards_on_the_table, 4):
-            hand = np.concatenate(([self.first], combination))
-            if strongest_hand_rank < get_hand_combination_strength(hand):
-                strongest_hand_rank = get_hand_combination_strength(hand)
-        for combination in itertools.combinations(cards_on_the_table, 4):
             hand = np.concatenate(([self.second], combination))
             if strongest_hand_rank < get_hand_combination_strength(hand):
                 strongest_hand_rank = get_hand_combination_strength(hand)

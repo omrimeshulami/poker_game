@@ -2,10 +2,10 @@ from enum import Enum
 
 
 class Symbol(Enum):
-    DIAMONDS = 1
-    HEARTS = 2
-    SPADES = 3
-    CLUBS = 4
+    DIAMONDS = "♦"
+    HEARTS = "♥"
+    SPADES = "♣"
+    CLUBS = "♠"
 
 
 class CardValue(Enum):

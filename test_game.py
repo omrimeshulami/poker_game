@@ -18,8 +18,7 @@ BIG_BLIND_VALUE = 10
 
 if __name__ == '__main__':
     table = Table(SMALL_BLIND_VALUE, BIG_BLIND_VALUE, STARTING_CASH)
-    names = ['Player1', 'Player2', 'Player3']
-    player = Player('name', 1000)
+    names = ['Omri', 'Bar', 'Ido']
     for i in range(0, len(names)):
         table.register_player(names[i])
     table.init_table()
