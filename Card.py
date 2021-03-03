@@ -4,4 +4,4 @@ class Card:
         self.value = value
 
     def print_card(self):
-        return f'Vlaue: {self.value} , Symbol: {self.symbol}'
+        return f'({self.value}{self.symbol})'
