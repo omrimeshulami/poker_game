@@ -1,11 +1,8 @@
 from Deck import Deck
-import random
 from Enums import Status
 import threading
 from Player import Player
-import functools
 import numpy as np
-from collections import defaultdict
 
 lock = threading.Lock()
 
@@ -16,7 +13,7 @@ class Table:
         self.mini_game_pots = {}
         self.players = {}
         self.players_remaining = []
-        self.small_blind_player = ""  #
+        self.small_blind_player = ""
         self.big_blind_player = ""
         self.dealer_button_player = ""
         self.small_blind_value = small_blind_value
@@ -33,8 +30,8 @@ class Table:
         if actions_parts[0].lower() == "check":
             self.is_last_player_folded = False
             self.folded_player_index = 0
-            self.complete_player_turn_and_switch_player()
             self.players[self.current_player].status = Status.CHECKED.value
+            self.complete_player_turn_and_switch_player()
             return True
         if actions_parts[0].lower() == "fold":
             self.is_last_player_folded = True
@@ -54,13 +51,11 @@ class Table:
             for name in self.players_remaining:
                 if self.players[name].bank_account.round_invested > max_raise_yet:
                     max_raise_yet = self.players[name].bank_account.round_invested
-                    print(max_raise_yet)
             if self.players[self.current_player].bank_account.need_all_in(max_raise_yet):
                 self.players[self.current_player].status = Status.ALL_IN.value
                 self.did_all_in_in_this_round.append(self.current_player)
             self.players[self.current_player].bank_account.call(
                 max_raise_yet - self.players[self.current_player].bank_account.round_invested)
-            self.round_pot += self.players[self.current_player].bank_account.round_invested
             self.is_last_player_folded = False
             self.folded_player_index = 0
             self.complete_player_turn_and_switch_player()
@@ -68,7 +63,6 @@ class Table:
         elif actions_parts[0].lower() == "raise" and len(actions_parts) == 2 and actions_parts[1].isnumeric():
             self.players[self.current_player].status = Status.RAISED.value  # TODO "FOLD" LOOKS LIKE ITS FINISHED
             self.players[self.current_player].bank_account.raise_bet(actions_parts[1])
-            self.round_pot += int(actions_parts[1])
             self.is_last_player_folded = False
             self.folded_player_index = 0
             self.complete_player_turn_and_switch_player()
@@ -82,13 +76,14 @@ class Table:
                 all_players_all_in_or_fold = False
         if self.is_mini_game_over():
             self.end_mini_game()
-        elif self.is_round_over() and all_players_all_in_or_fold:  # TODO if one all in and one have still money
+        elif self.is_round_over() and all_players_all_in_or_fold:
             self.open_rest_of_cards()
             self.end_mini_game()
-        if self.is_round_over() and len(self.did_all_in_in_this_round) > 0:
+        elif self.is_round_over() and len(self.did_all_in_in_this_round) > 0:
             self.update_pot()
+            print(self.mini_game_pots)
             self.new_round()
-        if self.is_round_over():
+        elif self.is_round_over():
             self.new_round()
 
         self.switch_to_next_player()
@@ -97,9 +92,9 @@ class Table:
     ############## TABLE METHODS #################
     def register_player(self, name):
         lock.acquire()
-        if name =="Omri":
+        if name == "Omri":
             player = Player(name, 3000)
-        if name =="Bar":
+        if name == "Bar":
             player = Player(name, 2000)
         if name == "Ido":
             player = Player(name, 1000)
@@ -119,7 +114,7 @@ class Table:
                     someone_raised = True
             check_option = "CHECK: check\n"
             action = input(
-                f'{self.current_player} turn:\n Hand:{self.players[self.current_player].hand.print_hand()}\nEnter your action:\nActions:\n{check_option if not someone_raised else ""}FOLD: fold\nCALL: call\nRAISE: raise 100\n')
+                f'{self.current_player} turn:\nHand:{self.players[self.current_player].hand.print_hand()}\n\nEnter your action:\nActions:\n{check_option if not someone_raised else ""}FOLD: fold\nCALL: call\nRAISE: raise 100\n')
             if self.player_action(action) == False:
                 print(f'ILLIGAL ACTION PLEASE TRY AGAIN')
         self.end_mini_game()
@@ -135,18 +130,9 @@ class Table:
     # TODO FINISHED
     def collect_blinds(self):
         self.players[self.small_blind_player].bank_account.call(self.small_blind_value)
-        self.round_pot += self.small_blind_value
         self.players[self.big_blind_player].bank_account.call(self.big_blind_value)
-        self.round_pot += self.big_blind_value
-
-    # TODO FINISHED
-    def update_players_bank_after_mini_game(self, names):  # TODO name will be array of the winners and amount
-        for key in self.players.keys():
-            self.players[key].bank_account.fold()
 
     def winner(self):
-        winners = []
-        text = ""
         players_to_choose_from = []
         for key in self.players.keys():
             if self.players[key].status != Status.FOLDED.value:
@@ -160,7 +146,6 @@ class Table:
                 group_by_invest[self.players[name].bank_account.mini_game_invested].append(
                     {'name': name, 'hand_rank': self.players[name].hand.calculate_strength(self.cards_on_the_table),
                      'money_invest': self.players[name].bank_account.mini_game_invested})
-            # TODO will need to add the case if there are two peple with same hand power with the same invest
             for key in group_by_invest.keys():
                 max_rank = 0
                 for player in group_by_invest[key]:
@@ -176,48 +161,40 @@ class Table:
                 players_to_choose_from = np.concatenate((players_to_choose_from, group_by_invest[key]))
             player_ordered_by_invest = sorted(players_to_choose_from, key=sort_invest_array, reverse=True)
             counter = len(player_ordered_by_invest) - 1
+            i = len(player_ordered_by_invest) - 1
             while counter >= 0:
-                for i in range(len(player_ordered_by_invest) - 1, 1):
+                while i >= 1:
                     if player_ordered_by_invest[i]['hand_rank'] < player_ordered_by_invest[i - 1]['hand_rank']:
-                        player_ordered_by_invest.remove(player_ordered_by_invest[i]['hand_rank'])
+                        player_ordered_by_invest.remove(player_ordered_by_invest[i])
+                    i -= 1
                 counter -= 1
             player_ordered_by_invest = sorted(player_ordered_by_invest, key=sort_invest_array)
-            # invest_counts = defaultdict(lambda: 0)
-            # for p in players_to_choose_from:
-            #     invest_counts[p['money_invest']] += 1
-            # hand_rank_counts = defaultdict(lambda: 0)
-            # for p in players_to_choose_from:
-            #     hand_rank_counts[p['hand_rank']] += 1
+            last_value = 0  # to same last key value
+            for key in self.mini_game_pots.keys():
+                had_player_with_this_invest = False
+                for player in player_ordered_by_invest:
+                    if player['money_invest'] == key:
+                        had_player_with_this_invest = True
+                        break
+                if had_player_with_this_invest:
+                    self.mini_game_pots[key] += last_value
+                    last_value = 0
+                else:
+                    last_value = self.mini_game_pots[key]
+                    self.mini_game_pots[key] = 0
+            self.mini_game_pots = {x: y for x, y in self.mini_game_pots.items() if y != 0}
             while len(player_ordered_by_invest) != 0:
                 player_to_check = player_ordered_by_invest[0]
                 players_names_to_split_with = []
                 for player in player_ordered_by_invest:
-                    if player['hand_rank'] == player_to_check['hand_rank']:
+                    if player['hand_rank'] >= player_to_check['hand_rank']:
                         players_names_to_split_with.append(player['name'])
 
                 for player in players_names_to_split_with:
                     self.players[player].bank_account.won_game_update(
                         self.mini_game_pots[player_to_check['money_invest']] / len(players_names_to_split_with))
-                player_ordered_by_invest.remove(player_to_check)
-                # pot_for_the_winner = 0
-                # for key in self.players.keys():
-                #     if self.players[key].bank_account.mini_game_invested <= player_to_check['money_invest'] and \
-                #             player_to_check['money_invest'] > 0:
-                #         pot_for_the_winner += self.players[key].bank_account.mini_game_invested
-                #         if contained(key, player_ordered_by_rank):
-                #             player_ordered_by_invest = filter_array(player_ordered_by_invest, key)
-                #             player_ordered_by_rank = filter_array(player_ordered_by_rank, key)
-                #         self.players[key].bank_account.remove_money(player_to_check['money_invest'])
-                #     else:
-                #         pot_for_the_winner += self.players[key].bank_account.mini_game_invested
-                #         self.players[key].bank_account.remove_money(player_to_check['money_invest'])
-                #     for player in player_ordered_by_rank[player_to_check['hand_rank']]:
-                #         self.players[player['name']].bank_account(
-                #             pot_for_the_winner / len(player_ordered_by_invest[player_to_check['money_invest']]))
-                # self.players[player_to_check['name']].bank_account.won_mini_game_update(pot_for_the_winner)
-                # text += "the name of the player , hand rank and pot"
-
-        # return players_to_choose_from
+                player_ordered_by_invest = remove_all_players_with_same_investment(player_ordered_by_invest,
+                                                                                   player_to_check['money_invest'])
 
     # TODO FINISHED
     def switch_to_next_player(self):
@@ -255,22 +232,19 @@ class Table:
         else:
             next_player_name = self.players_remaining[
                 (self.players_remaining.index(self.current_player) + 1) % len(self.players_remaining)]
-            while self.players[next_player_name].status == Status.ALL_IN.value:             # pass the all in players
+            while self.players[next_player_name].status == Status.ALL_IN.value:  # pass the all in players
                 next_player_name = self.players_remaining[
                     (self.players_remaining.index(next_player_name) + 1) % len(self.players_remaining)]
         if self.players[next_player_name].status == Status.RAISED.value:
             for n in self.players_remaining:
-                if (self.players[n].status != Status.CALLED.value and self.players[n].status != Status.ALL_IN.value) and n != next_player_name:
+                if (self.players[n].status != Status.CALLED.value and self.players[
+                    n].status != Status.ALL_IN.value) and n != next_player_name:
                     return False
         else:
             for n in self.players_remaining:
-                if self.players[n].status != Status.CHECKED.value or self.players[n].status != Status.ALL_IN.value:
+                if self.players[n].status != Status.CHECKED.value and self.players[n].status != Status.ALL_IN.value:
                     return False
         return True
-
-    def end_round(self):
-        if len(self.did_all_in_in_this_round) > 0:
-            self.update_pot()
 
     # TODO FINISHED
     ########### MINI GAME METHODS ###############
@@ -280,7 +254,6 @@ class Table:
                 self.players_remaining.append(self.players[key].name)
                 self.players[key].status = Status.WAIT_FOR_TURN.value
         self.deck = Deck()
-        self.round_pot = 0
         if self.small_blind_player == "":
             self.init_buttons()
         else:
@@ -292,10 +265,13 @@ class Table:
     # TODO FINISHED
     def end_mini_game(self):
         if len(self.mini_game_pots) == 0:
-            self.create_oe_pot_for_all()
+            self.create_one_pot_for_all()
+        else:
+            self.create_left_over_pot()
         self.winner()
         self.winner_status()
         self.update_losers()
+        self.mini_game_pots = {}
         self.players_remaining = []
         self.cards_on_the_table = []
         self.new_mini_game()
@@ -303,7 +279,7 @@ class Table:
     # TODO FINISHED
     def is_mini_game_over(self):
         if (len(self.cards_on_the_table) == 5 and self.is_round_over()) or len(
-                self.players_remaining) == 1:  # TODO try en(self.cards_on_the_table) == 6
+                self.players_remaining) == 1:
             return True
         else:
             return False
@@ -314,7 +290,7 @@ class Table:
         text = ''
         players_cash = ""
         table_cards = "Card On The Table: "
-        text += f'Pot: {self.round_pot}\n'
+        text += f'Pot: {self.pot_calc()}\n'
         text += f'Dealer Button: {self.dealer_button_player}\n'
         text += f'Small Blind: {self.small_blind_player}\n'
         text += f'Big Blind: {self.big_blind_player}\n'
@@ -396,6 +372,7 @@ class Table:
     def update_losers(self):
         for key in self.players.keys():
             self.players[key].bank_account.lost_game_update()
+        self.players = self.remove_all_players_with_zero_cash()
 
     def winner_status(self):
         text = "WINNERS:\n"
@@ -405,11 +382,41 @@ class Table:
 
         print(text)
 
-    def create_oe_pot_for_all(self):
+    def create_one_pot_for_all(self):
         pot = 0
         for key in self.players.keys():
-            pot += self.players[self.players_remaining[0]].bank_account.mini_game_invested
+            pot += self.players[key].bank_account.mini_game_invested
         self.mini_game_pots[self.players[self.players_remaining[0]].bank_account.mini_game_invested] = pot
+
+    def pot_calc(self):
+        pot = 0
+        for key in self.players.keys():
+            pot += self.players[key].bank_account.mini_game_invested
+        return pot
+
+    def create_left_over_pot(self):
+        max_invest = 0
+        pot = 0
+
+        for name in self.players_remaining:
+            if self.players[name].bank_account.mini_game_invested > max_invest:
+                max_invest = self.players[name].bank_account.mini_game_invested
+        for key in self.players.keys():
+            if self.players[key].bank_account.mini_game_invested >= max_invest:
+                pot += max_invest
+            else:
+                pot += self.players[key].bank_account.mini_game_invested
+        for key in self.mini_game_pots.keys():
+            pot -= self.mini_game_pots[key]
+        self.mini_game_pots[max_invest] = pot
+        self.did_all_in_in_this_round = []
+
+    def remove_all_players_with_zero_cash(self):
+        new_array = {}
+        for key in self.players:
+            if self.players[key].bank_account.total_cash != 0:
+                new_array[key] = self.players[key]
+        return new_array
 
 
 def sort_rank_array(val):
@@ -425,6 +432,15 @@ def contained(val, array):
         if player['name'] == val:
             return True
     return False
+
+
+def remove_all_players_with_same_investment(players_ordered_by_invest, value):
+    new_array = []
+    for player in players_ordered_by_invest:
+        if player['money_invest'] != value:
+            new_array.append(player)
+
+    return new_array
 
 
 def filter_array(players, name):

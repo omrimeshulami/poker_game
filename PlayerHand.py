@@ -24,7 +24,7 @@ class PlayerHand:
         return strongest_hand_rank
 
     def print_hand(self):
-        return f'First Card: {self.first.print_card()} , Second Card: {self.second.print_card()}'
+        return f'{self.first.print_card()},{self.second.print_card()}'
 
 
 def get_hand_combination_strength(hand):
