@@ -3,6 +3,7 @@ from Enums import Status
 import threading
 from Player import Player
 import numpy as np
+import sys
 
 lock = threading.Lock()
 
@@ -60,8 +61,12 @@ class Table:
             self.folded_player_index = 0
             self.complete_player_turn_and_switch_player()
             return True
-        elif actions_parts[0].lower() == "raise" and len(actions_parts) == 2 and actions_parts[1].isnumeric():
-            self.players[self.current_player].status = Status.RAISED.value  # TODO "FOLD" LOOKS LIKE ITS FINISHED
+        elif actions_parts[0].lower() == "raise" and len(actions_parts) == 2 and actions_parts[1].isnumeric() and \
+                self.players[self.current_player].bank_account.max_bet >= int(actions_parts[1]):
+            if self.players[self.current_player].bank_account.max_bet == int(actions_parts[1]):
+                self.players[self.current_player].status = Status.ALL_IN.value  # TODO "FOLD" LOOKS LIKE ITS FINISHED
+            else:
+                self.players[self.current_player].status = Status.RAISED.value
             self.players[self.current_player].bank_account.raise_bet(actions_parts[1])
             self.is_last_player_folded = False
             self.folded_player_index = 0
@@ -71,12 +76,16 @@ class Table:
 
     def complete_player_turn_and_switch_player(self):
         all_players_all_in_or_fold = True
+        raise_counter = 0
         for key in self.players.keys():
             if self.players[key].status != Status.ALL_IN.value and self.players[key].status != Status.FOLDED.value:
                 all_players_all_in_or_fold = False
+            if self.players[key].status == Status.RAISED.value:
+                raise_counter += 1
+                all_players_all_in_or_fold = True
         if self.is_mini_game_over():
             self.end_mini_game()
-        elif self.is_round_over() and all_players_all_in_or_fold:
+        elif self.is_round_over() and all_players_all_in_or_fold and raise_counter <= 1:
             self.open_rest_of_cards()
             self.end_mini_game()
         elif self.is_round_over() and len(self.did_all_in_in_this_round) > 0:
@@ -110,12 +119,18 @@ class Table:
             self.table_status()
             someone_raised = False
             for key in self.players.keys():
-                if self.players[key].status == Status.RAISED.value:
+                if self.players[key].status == Status.RAISED.value or self.players[key].status == Status.ALL_IN.value:
                     someone_raised = True
             check_option = "CHECK: check\n"
+            call_option = "CALL: call\n"
+
             action = input(
-                f'{self.current_player} turn:\nHand:{self.players[self.current_player].hand.print_hand()}\n\nEnter your action:\nActions:\n{check_option if not someone_raised else ""}FOLD: fold\nCALL: call\nRAISE: raise 100\n')
-            if self.player_action(action) == False:
+                f'{self.current_player} turn:\nHand:{self.players[self.current_player].hand.print_hand()}\n\nEnter your action:\nActions:\n{check_option if not someone_raised else ""}{call_option if someone_raised else ""}FOLD: fold\nRAISE: raise 100\n')
+            if action.lower() == "call" and not someone_raised:
+                print(f'ILLIGAL ACTION PLEASE TRY AGAIN')
+            elif action.lower() == "check" and someone_raised:
+                print(f'ILLIGAL ACTION PLEASE TRY AGAIN')
+            elif self.player_action(action) == False:
                 print(f'ILLIGAL ACTION PLEASE TRY AGAIN')
         self.end_mini_game()
 
@@ -249,18 +264,19 @@ class Table:
     # TODO FINISHED
     ########### MINI GAME METHODS ###############
     def new_mini_game(self):
-        for key in self.players.keys():
-            if self.players[key].bank_account.total_cash > 0:
+        if len(self.players) > 1:
+            for key in self.players.keys():
                 self.players_remaining.append(self.players[key].name)
                 self.players[key].status = Status.WAIT_FOR_TURN.value
-        self.deck = Deck()
-        if self.small_blind_player == "":
-            self.init_buttons()
-        else:
-            self.update_buttons()
-        self.deck.deal_cards(self.players)
-        self.collect_blinds()
-        self.run_game()
+            self.deck = Deck()
+            if self.small_blind_player == "":
+                self.init_buttons()
+            else:
+                self.update_buttons()
+            self.deck.deal_cards(self.players)
+            self.collect_blinds()
+            self.run_game()
+        sys.exit("Only One Player Left ")
 
     # TODO FINISHED
     def end_mini_game(self):
@@ -291,7 +307,7 @@ class Table:
         players_cash = ""
         table_cards = "Card On The Table: "
         text += f'Pot: {self.pot_calc()}\n'
-        text += f'Dealer Button: {self.dealer_button_player}\n'
+        text += f'Dealer Button: {self.dealer_button_player if len(self.players_remaining) > 2 else "NOT IN USE"}\n'
         text += f'Small Blind: {self.small_blind_player}\n'
         text += f'Big Blind: {self.big_blind_player}\n'
         for i in range(0, len(self.cards_on_the_table)):
@@ -314,7 +330,7 @@ class Table:
             self.small_blind_player = self.players_remaining[0]
             self.big_blind_player = self.players_remaining[1]
             self.current_player = self.players_remaining[0]
-
+            self.dealer_button_player = "NO NEED"
         else:
             self.dealer_button_player = self.players_remaining[0]
             self.small_blind_player = self.players_remaining[1]
@@ -328,9 +344,9 @@ class Table:
                 self.small_blind_player = self.players_remaining[0]
                 self.big_blind_player = self.players_remaining[1]
                 self.current_player = self.players_remaining[0]
-
-        else:
-            # if we have enough room to move the buttons
+                self.dealer_button_player = "NO NEED"
+        elif len(self.players_remaining) > 2:
+            # TODO when player lose need to fix
             self.dealer_button_player = self.players_remaining[
                 (self.players_remaining.index(self.dealer_button_player) + 1) % len(self.players_remaining)]
             self.small_blind_player = self.players_remaining[
@@ -338,7 +354,7 @@ class Table:
             self.big_blind_player = self.players_remaining[
                 (self.players_remaining.index(self.big_blind_player) + 1) % len(self.players_remaining)]
             self.current_player = self.players_remaining[
-                (self.players_remaining.index(self.dealer_button_player) + 1) % len(self.players)]
+                (self.players_remaining.index(self.dealer_button_player)) % len(self.players)]
 
     def open_rest_of_cards(self):
         if len(self.cards_on_the_table) == 0:
@@ -350,6 +366,10 @@ class Table:
             self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
         elif len(self.cards_on_the_table) == 5:
             self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
+        table_cards = "Card On The Table: "
+        for i in range(0, len(self.cards_on_the_table)):
+            table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
+        print(table_cards)
 
     def update_pot(self):
         players_all_in = {}
@@ -381,6 +401,10 @@ class Table:
                 text += f'{key}: won {self.players[key].bank_account.mini_game_eared} with hank rank of:{self.players[key].hand.calculate_strength(self.cards_on_the_table)}\n'
 
         print(text)
+        players_hands = ""
+        for key in self.players.keys():
+            players_hands += f'{key}: Hank Rank :{self.players[key].hand.calculate_strength(self.cards_on_the_table)}\n'
+        print(players_hands)
 
     def create_one_pot_for_all(self):
         pot = 0
