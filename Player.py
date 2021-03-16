@@ -9,4 +9,3 @@ class Player:
         self.name = name
         self.hand = PlayerHand()
         self.status = Status.WAIT_FOR_TURN.value
-        self.role = None

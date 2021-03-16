@@ -32,7 +32,9 @@ class Deck:
             players[key].hand.second = self.deck[len(self.deck) - 1]  # DEAL ONE CARD TO EACH PLAYER
             self.deck = self.deck[:-1]
 
+    # TODO check if work
     def shuffle(self):
+        deck1 = [Card(number, symbol) for number in range(2, 15) for symbol in list(map(lambda c: c.value, Symbol))]
         deck = []
         for i in range(2, 15):
             deck.append(Card(i, Symbol.HEARTS.value))

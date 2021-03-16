@@ -47,15 +47,15 @@ class TcpThread(threading.Thread):
         while table_status == TableStatus.NOT_READY:
             continue
         while True:
-            game_status = table.table_status()
+            game_status = table.print_table_status()
             player_hand = table.get_player_hand(name)
             game_status += f'Your Hand:  {player_hand.first},{player_hand.second}'
-            if table.current_player == name:
+            if table.current_player_name == name:
                 game_status += "ITS YOUR TURN NOW"
             else:
                 game_status += "ITS NOT YOUR TURN NOW"
             self.client_socket.send(game_status.encode('utf-8'))
-            while table.current_player != name:
+            while table.current_player_name != name:
                 pass
             self.client_socket.send(game_status.encode('utf-8'))
 
