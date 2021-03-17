@@ -1,7 +1,7 @@
 from Table import Table
 
-from Enums import  TestMode
-from scenes.scene_generator import generate_scenes, delete_scenes
+from Enums import TestMode
+from testing.scene_generator import SceneGenerator
 
 # GAME SETTING
 STARTING_CASH = 3000
@@ -11,10 +11,11 @@ SMALL_BLIND_VALUE = 5
 BIG_BLIND_VALUE = 10
 
 # TEST CONFIGURATION
-NUMBER_OF_SCENES = 1
+NUMBER_OF_SCENES = 10
 TEST_MODE = TestMode.AUTOMATICALLY
 if __name__ == '__main__':
-    generate_scenes(NUMBER_OF_SCENES)
+    scene_generator = SceneGenerator()
+    scene_generator.generate_scenes(NUMBER_OF_SCENES)
     names = ['Omri', 'Bar', 'Ido']
     for file_index in range(1, NUMBER_OF_SCENES+1):
         table = Table(SMALL_BLIND_VALUE, BIG_BLIND_VALUE, STARTING_CASH, TEST_MODE.value, file_index)
@@ -22,4 +23,4 @@ if __name__ == '__main__':
             table.register_player(names[i])
         table.init_table()
     print("#############FINISHED#####################")
-    delete_scenes(NUMBER_OF_SCENES)
+    scene_generator.delete_scenes(NUMBER_OF_SCENES)

@@ -14,7 +14,7 @@ class Table:
         # for auto testing
         self.test_mode = test_mode
         if test_mode == TestMode.AUTOMATICALLY.value:
-            self.simulation = open(f'simulation{index_file}.txt', "r")
+            self.simulation = open(f'testing/scenes/simulation{index_file}.txt', "r")
         # table info
         self.table_status = TableStatus.WAIT_FOR_PLAYERS.value
         self.names_of_players_who_all_in_this_round = []
@@ -256,7 +256,6 @@ class Table:
                 counter -= 1
             player_ordered_by_invest = sorted(player_ordered_by_invest, key=sort_invest_array)
             last_value = 0  # to same last key value
-            print(f'pots before update: {self.game_pots}')
             for pot in self.game_pots:
                 had_player_with_this_invest = False
                 for player in player_ordered_by_invest:
@@ -269,10 +268,8 @@ class Table:
                 else:
                     last_value = pot['reward']
                     pot['reward'] = 0
-            print(f'pots after update: {self.game_pots}')
             if len(self.game_pots) > 0:
                 self.game_pots = [pot for pot in self.game_pots if pot['reward'] != 0]
-            print(player_ordered_by_invest)
 
             while len(player_ordered_by_invest) != 0:
                 player_to_check = player_ordered_by_invest[0]
@@ -310,8 +307,6 @@ class Table:
     ############# ROUND METHODS ###################
     # TODO FINISHED
     def new_round(self):
-        print("new round")
-        print(self.game_pots)
         for name in self.names_of_players_remaining:
             self.players[name].bank_account.new_round()
         self.open_new_card()
@@ -411,7 +406,6 @@ class Table:
     ############# PRINT METHODS #################
     # TODO FINISHED
     def print_table_status(self):
-        print(self.names_of_players_remaining)
         text = ''
         players_cash = ""
         table_cards = "Card On The Table: "
@@ -460,6 +454,11 @@ class Table:
                 self.big_blind_player_name = self.names_of_players_remaining[1]
                 self.current_player_name = self.names_of_players_remaining[0]
                 self.dealer_button_player_name = "NO NEED"
+            else:
+                self.small_blind_player_name = self.names_of_players_remaining[1]
+                self.big_blind_player_name = self.names_of_players_remaining[0]
+                self.current_player_name = self.names_of_players_remaining[1]
+                self.dealer_button_player_name = "NO NEED"
         elif len(self.names_of_players_remaining) > 2:
             self.dealer_button_player_name = self.names_of_players_remaining[
                 (self.names_of_players_remaining.index(self.dealer_button_player_name) + 1) % len(
@@ -489,7 +488,6 @@ class Table:
 
     def all_in_split_pot(self):
         players_all_in = {}
-        print(f'game pots before update in "all in split pot:" {self.game_pots}')
         for name in self.names_of_players_who_all_in_this_round:
             players_all_in[self.players[name].bank_account.mini_game_investment] = []
         for name in self.names_of_players_who_all_in_this_round:
@@ -502,11 +500,9 @@ class Table:
                 else:
                     reward += self.players[key].bank_account.mini_game_investment
             for pot in self.game_pots:
-                print(f'pot: {pot}')
-                print(f'pot[reward]: {pot["reward"]}')
+
                 reward -= pot['reward']
             self.game_pots.append({'invest': invest, 'reward': reward})
-        print(f'game pots after update in "all in split pot:" {self.game_pots}')
 
     def update_losers(self):
         for key in self.players.keys():
@@ -543,7 +539,6 @@ class Table:
         return pot
 
     def create_left_over_pot(self):
-        print(f'game pots before update in "left over" {self.game_pots}')
 
         pot = 0
         max_invest_name = max(self.names_of_players_remaining,
@@ -554,7 +549,6 @@ class Table:
         for p in self.game_pots:
             pot -= p['reward']
         self.game_pots.append({'invest': max_invest, 'reward': pot})
-        print(f'game pots after update in "left over" {self.game_pots}')
 
     def remove_all_players_with_zero_cash(self):
         new_array = {}
