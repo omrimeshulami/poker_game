@@ -6,6 +6,7 @@ class SceneGenerator:
     def generate_scenes(self, number_of_scenes):
         for i in range(1, number_of_scenes + 1):
             f = open(f'testing/scenes/simulation{i}.txt', "w+")
+            print(f'creating file:simulation{i}.txt...')
             for row in range(0, 10000):
                 if row < 9999:
                     random_choice = randrange(7)

@@ -4,4 +4,13 @@ class Card:
         self.value = value
 
     def print_card(self):
-        return f'[{self.value}{self.symbol}]'
+        if self.value==14:
+            return f'[A{self.symbol}]'
+        elif self.value==13:
+            return f'[K{self.symbol}]'
+        elif self.value==12:
+            return f'[Q{self.symbol}]'
+        elif self.value==11:
+            return f'[J{self.symbol}]'
+        else:
+            return f'[{self.value}{self.symbol}]'

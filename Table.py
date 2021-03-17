@@ -229,7 +229,7 @@ class Table:
                 group_by_invest[self.players[name].bank_account.mini_game_investment] = []
             for name in players_to_choose_from:  # insert values to the array
                 group_by_invest[self.players[name].bank_account.mini_game_investment].append(
-                    {'name': name, 'hand_rank': self.players[name].hand.rank_score(self.cards_on_the_table),
+                    {'name': name, 'hand_rank': self.players[name].hand.rank_score(self.cards_on_the_table)['rank_score'],
                      'money_invest': self.players[name].bank_account.mini_game_investment})
             for key in group_by_invest.keys():
                 max_rank = 0
@@ -512,13 +512,18 @@ class Table:
     def winner_status(self):
         text = "WINNERS:\n"
         for key in self.players.keys():
+
             if self.players[key].bank_account.mini_game_eared > 0:
-                text += f'{key}: won {self.players[key].bank_account.mini_game_eared} with hank rank of:{self.players[key].hand.rank_score(self.cards_on_the_table)}\n'
+                text += f'{key} won {self.players[key].bank_account.mini_game_eared} cash with {self.players[key].hand.rank_score(self.cards_on_the_table)["rank_name"]}\n'
 
         print(text)
-        players_hands = ""
+        players_hands = "All Players hands:\n"
         for key in self.players.keys():
-            players_hands += f'{key}: Hand Rank :{self.players[key].hand.rank_score(self.cards_on_the_table)}\n'
+            player_hand = "("
+            for card in self.players[key].hand.rank_score(self.cards_on_the_table)['hand']:
+                player_hand += f'{card.print_card()}'
+            player_hand += f')'
+            players_hands += f'{key} Hand:{player_hand}\n'
         print(players_hands)
 
     def create_single_pot_for_all_players(self):

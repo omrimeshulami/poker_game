@@ -13,19 +13,19 @@ class PlayerHand:
         return f'{self.first.print_card()},{self.second.print_card()}'
 
     def rank_score(self, cards_on_the_table):
-        strongest_hand_rank = 0
+        strongest_hand_rank = {'rank_score': 0, 'hand': []}
         for combination in itertools.combinations(cards_on_the_table, 3):
             hand = np.concatenate(([self.first, self.second], combination))  # player cards + 3 on the table
-            if strongest_hand_rank < get_hand_combination_strength(hand):
+            if strongest_hand_rank['rank_score'] < get_hand_combination_strength(hand)['rank_score']:
                 strongest_hand_rank = get_hand_combination_strength(hand)
         for combination in itertools.combinations(cards_on_the_table, 4):
             hand_with_first_card = np.concatenate(([self.first], combination))  # player  card + 4 on the table
             hand_with_second_card = np.concatenate(([self.second], combination))
-            if strongest_hand_rank < get_hand_combination_strength(hand_with_first_card):
+            if strongest_hand_rank['rank_score'] < get_hand_combination_strength(hand_with_first_card)['rank_score']:
                 strongest_hand_rank = get_hand_combination_strength(hand_with_first_card)
-            if strongest_hand_rank < get_hand_combination_strength(hand_with_second_card):
+            if strongest_hand_rank['rank_score'] < get_hand_combination_strength(hand_with_second_card)['rank_score']:
                 strongest_hand_rank = get_hand_combination_strength(hand_with_second_card)
-        if strongest_hand_rank < get_hand_combination_strength(cards_on_the_table):
+        if strongest_hand_rank['rank_score'] < get_hand_combination_strength(cards_on_the_table)['rank_score']:
             strongest_hand_rank = get_hand_combination_strength(cards_on_the_table)  # 5 on the table
         return strongest_hand_rank
 
@@ -36,39 +36,39 @@ def get_hand_combination_strength(hand):
     hand_symbols = [i.symbol for i in hand]
     verification_and_rank_score = check_straight_flush(hand_values, hand_symbols)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Straight Flush', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_four_of_a_kind(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Four Of A Kind', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_full_house(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Full House', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_flush(hand_values, hand_symbols)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Flush', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_straight(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Straight', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_three_of_a_kind(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Three Of A kind', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_two_pairs(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'Two Pairs', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_one_pairs(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'One Pair', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
     verification_and_rank_score = check_high_card(hand_values)
     if verification_and_rank_score['verification'] and strongest_hand_rank < verification_and_rank_score['rank_score']:
-        return verification_and_rank_score['rank_score']
+        return {'rank_name': 'High Card', 'rank_score': verification_and_rank_score['rank_score'], 'hand': hand}
 
 
 def check_straight_flush(hand_values, hand_symbols):
@@ -89,7 +89,8 @@ def check_four_of_a_kind(hand_values):
     if sorted(value_counts.values()) == [1, 4]:
         forth_of_a_kind_value = [value_count for value_count in value_counts if value_counts[value_count] == 4][0]
         high_card_value = [value_count for value_count in value_counts if value_counts[value_count] == 4][0]
-        hand = [forth_of_a_kind_value, forth_of_a_kind_value, forth_of_a_kind_value, forth_of_a_kind_value, high_card_value]
+        hand = [forth_of_a_kind_value, forth_of_a_kind_value, forth_of_a_kind_value, forth_of_a_kind_value,
+                high_card_value]
         rank_score = calculate_hand_rank(HandStrength.FOUR_OF_KIND, hand)
         return {'verification': True, 'rank_score': rank_score}
 
@@ -135,6 +136,7 @@ def check_straight(hand_values):
             rank_score = calculate_hand_rank(HandStrength.STRAIGHT, reversed_array)
             return {'verification': True, 'rank_score': rank_score}
         return {'verification': False, 'rank_score': 0}
+
 
 def check_three_of_a_kind(hand_values):
     value_counts = defaultdict(lambda: 0)
