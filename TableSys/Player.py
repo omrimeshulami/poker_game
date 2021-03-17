@@ -1,6 +1,6 @@
-from PlayerHand import PlayerHand
-from FinancialSystem import FinancialSystem
-from Enums import Status
+from .PlayerHand import PlayerHand
+from .FinancialSystem import FinancialSystem
+from .Enums import Status
 
 
 class Player:

@@ -1,7 +1,6 @@
-from Card import Card
-from Enums import Symbol
+from .Card import Card
+from ..Enums import Symbol
 import random
-import Player
 
 
 class Deck:

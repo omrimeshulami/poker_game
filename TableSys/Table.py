@@ -1,11 +1,12 @@
 from random import randrange
 
-from Deck import Deck
-from Enums import Status, TableStatus, TestMode
+from TableSys.DeckSys.Deck import Deck
+from .Button import Button
+from .Enums import Status, TableStatus, TestMode
 import threading
-from Player import Player
+from .Player import Player
 import numpy as np
-
+from time import sleep
 lock = threading.Lock()
 
 
@@ -21,11 +22,9 @@ class Table:
         self.game_pots = []
         self.players = {}  # {{key:name1 ,value:Player()},{key:name2 ,value:Player()}}
         self.names_of_players_remaining = []
-        self.small_blind_player_name = ""
-        self.big_blind_player_name = ""
-        self.dealer_button_player_name = ""
-        self.small_blind_value = small_blind_value
-        self.big_blind_value = big_blind_value
+        self.small_button = Button(small_blind_value)
+        self.big_button = Button(big_blind_value)
+        self.dealer_button = Button(0)
         self.deck = Deck()
         self.cards_on_the_table = []
         self.current_player_name = ""
@@ -217,9 +216,9 @@ class Table:
 
     # TODO FINISHED
     def collect_blinds(self):
-        self.players[self.small_blind_player_name].bank_account.call(self.small_blind_value)
+        self.players[self.small_button.name].bank_account.call(self.small_button.value)
 
-        self.players[self.big_blind_player_name].bank_account.call(self.big_blind_value)
+        self.players[self.big_button.name].bank_account.call(self.big_button.value)
 
     def winner(self):
         players_to_choose_from = [key for key in self.players.keys() if self.players[key].status != Status.FOLDED.value]
@@ -352,16 +351,16 @@ class Table:
     def set_table_for_new_game(self):
         for key in self.players.keys():
             self.names_of_players_remaining.append(self.players[key].name)
-        if self.small_blind_player_name == "":
+        if self.small_button.name == "":
             self.init_buttons()
         else:
             self.update_buttons()
         for key in self.players.keys():
-            if self.small_blind_player_name == key:
+            if self.small_button.name == key:
                 self.players[key].status = Status.SMALL_BLIND.value
-            elif self.big_blind_player_name == key:
+            elif self.big_button.name == key:
                 self.players[key].status = Status.BIG_BLIND.value
-            elif self.dealer_button_player_name == key:
+            elif self.dealer_button.name == key:
                 self.players[key].status = Status.DEALER.value
             else:
                 self.players[key].status = Status.WAIT_FOR_TURN.value
@@ -392,6 +391,8 @@ class Table:
         self.names_of_players_remaining = []
         self.cards_on_the_table = []
         self.table_status = TableStatus.STARTING_NEW_GAME.value
+        if self.test_mode == TestMode.AUTOMATICALLY.value:
+            sleep(10)
         if len(self.players) == 1:
             self.table_status = TableStatus.TABLE_FINISHED.value
 
@@ -409,10 +410,10 @@ class Table:
         text = ''
         players_cash = ""
         table_cards = "Card On The Table: "
-        text += f'Pot: {self.pot_calc()}\n'
-        text += f'Dealer Button: {self.dealer_button_player_name if len(self.names_of_players_remaining) > 2 else "NOT IN USE"}\n'
-        text += f'Small Blind: {self.small_blind_player_name}\n'
-        text += f'Big Blind: {self.big_blind_player_name}\n'
+        text += f'Total Pot: {self.pot_calc()} split pots: {self.game_pots}\n'
+        text += f'Dealer Button: {self.dealer_button.name if len(self.names_of_players_remaining) > 2 else "NOT IN USE"}\n'
+        text += f'Small Blind: {self.small_button.name}\n'
+        text += f'Big Blind: {self.big_button.name}\n'
         for i in range(0, len(self.cards_on_the_table)):
             table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
         text += f'{table_cards}\n'
@@ -420,7 +421,8 @@ class Table:
             players_cash += f'{self.players[key].name}:\tCash In hand:{self.players[key].bank_account.max_bet_allowed},\tCash In in Pot:{self.players[key].bank_account.mini_game_investment},\tCash Invest In Round:{self.players[key].bank_account.round_investment},\tStatus:{self.players[key].status}\n'
         text += players_cash
         print(text)
-
+        print(f'player turn: {self.current_player_name}')
+        print(f'Your Hand: {self.players[self.current_player_name].hand.print_hand()}')
     ################ GETTERS ###################
     # TODO FINISHED
     def get_player_hand(self, name):
@@ -431,46 +433,46 @@ class Table:
     def init_buttons(self):
         random_play_index = randrange(len(self.names_of_players_remaining))
         if len(self.names_of_players_remaining) == 2:
-            self.small_blind_player_name = self.names_of_players_remaining[
+            self.small_button.name = self.names_of_players_remaining[
                 random_play_index % len(self.names_of_players_remaining)]
-            self.big_blind_player_name = self.names_of_players_remaining[
+            self.big_button.name = self.names_of_players_remaining[
                 (random_play_index + 1) % len(self.names_of_players_remaining)]
-            self.current_player_name = self.small_blind_player_name
-            self.dealer_button_player_name = "NO NEED"
+            self.current_player_name = self.small_button.name
+            self.dealer_button.name = "NO NEED"
         else:
-            self.dealer_button_player_name = self.names_of_players_remaining[
+            self.dealer_button.name = self.names_of_players_remaining[
                 random_play_index % len(self.names_of_players_remaining)]
-            self.small_blind_player_name = self.names_of_players_remaining[
+            self.small_button.name = self.names_of_players_remaining[
                 (random_play_index + 1) % len(self.names_of_players_remaining)]
-            self.big_blind_player_name = self.names_of_players_remaining[
+            self.big_button.name = self.names_of_players_remaining[
                 (random_play_index + 2) % len(self.names_of_players_remaining)]
-            self.current_player_name = self.dealer_button_player_name
+            self.current_player_name = self.dealer_button.name
 
     # TODO FINISHED
     def update_buttons(self):
         if len(self.names_of_players_remaining) == 2:
-            if self.small_blind_player_name != self.names_of_players_remaining[0]:
-                self.small_blind_player_name = self.names_of_players_remaining[0]
-                self.big_blind_player_name = self.names_of_players_remaining[1]
+            if self.small_button.name != self.names_of_players_remaining[0]:
+                self.small_button.name = self.names_of_players_remaining[0]
+                self.big_button.name = self.names_of_players_remaining[1]
                 self.current_player_name = self.names_of_players_remaining[0]
-                self.dealer_button_player_name = "NO NEED"
+                self.dealer_button.name = "NO NEED"
             else:
-                self.small_blind_player_name = self.names_of_players_remaining[1]
-                self.big_blind_player_name = self.names_of_players_remaining[0]
+                self.small_button.name = self.names_of_players_remaining[1]
+                self.big_button.name = self.names_of_players_remaining[0]
                 self.current_player_name = self.names_of_players_remaining[1]
-                self.dealer_button_player_name = "NO NEED"
+                self.dealer_button.name = "NO NEED"
         elif len(self.names_of_players_remaining) > 2:
-            self.dealer_button_player_name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.dealer_button_player_name) + 1) % len(
+            self.dealer_button.name = self.names_of_players_remaining[
+                (self.names_of_players_remaining.index(self.dealer_button.name) + 1) % len(
                     self.names_of_players_remaining)]
-            self.small_blind_player_name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.small_blind_player_name) + 1) % len(
+            self.small_button.name = self.names_of_players_remaining[
+                (self.names_of_players_remaining.index(self.small_button.name) + 1) % len(
                     self.names_of_players_remaining)]
-            self.big_blind_player_name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.big_blind_player_name) + 1) % len(
+            self.big_button.name = self.names_of_players_remaining[
+                (self.names_of_players_remaining.index(self.big_button.name) + 1) % len(
                     self.names_of_players_remaining)]
             self.current_player_name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.dealer_button_player_name)) % len(self.players)]
+                (self.names_of_players_remaining.index(self.dealer_button.name)) % len(self.players)]
 
     def open_rest_of_cards(self):
         if len(self.cards_on_the_table) == 0:
@@ -517,13 +519,17 @@ class Table:
                 text += f'{key} won {self.players[key].bank_account.mini_game_eared} cash with {self.players[key].hand.rank_score(self.cards_on_the_table)["rank_name"]}\n'
 
         print(text)
+        table_cards = "Card On The Table: "
+        for i in range(0, len(self.cards_on_the_table)):
+            table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
+        print(table_cards)
         players_hands = "All Players hands:\n"
         for key in self.players.keys():
             player_hand = "("
             for card in self.players[key].hand.rank_score(self.cards_on_the_table)['hand']:
                 player_hand += f'{card.print_card()}'
             player_hand += f')'
-            players_hands += f'{key} Hand:{player_hand}\n'
+            players_hands += f'{key} Hand:{player_hand},  Rank Name:{self.players[key].hand.rank_score(self.cards_on_the_table)["rank_name"]}   ,Rank Name:{self.players[key].hand.rank_score(self.cards_on_the_table)["rank_score"]}\n'
         print(players_hands)
 
     def create_single_pot_for_all_players(self):
