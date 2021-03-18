@@ -1,5 +1,5 @@
 from collections import defaultdict
-from .Enums import HandStrength
+from Enums import HandStrength
 import numpy as np
 import itertools
 

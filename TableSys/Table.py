@@ -2,7 +2,7 @@ from random import randrange
 
 from TableSys.DeckSys.Deck import Deck
 from .Button import Button
-from .Enums import Status, TableStatus, TestMode
+from Enums import Status, TableStatus, TestMode
 import threading
 from .Player import Player
 import numpy as np

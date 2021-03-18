@@ -1,7 +1,7 @@
 import socket
 import threading
 from TableSys import Table
-from TableSys.Enums import TableStatus
+from Enums import TableStatus
 
 # GLOBAL PARAMS
 

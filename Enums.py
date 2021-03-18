@@ -63,3 +63,9 @@ class HandStrength(Enum):
 class TestMode(Enum):
     MANUALLY = 'MANUALLY'
     AUTOMATICALLY = 'AUTOMATICALLY'
+
+
+class UserStatus(Enum):
+   ONLINE = 'ONLINE'
+   OFFLINE = 'OFFLINE'
+   PLAYING = 'PLAYING'

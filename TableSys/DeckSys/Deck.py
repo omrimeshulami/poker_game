@@ -1,5 +1,5 @@
 from .Card import Card
-from ..Enums import Symbol
+from Enums import Symbol
 import random
 
 

@@ -1,9 +1,6 @@
-from TableSys.DeckSys.Card import Card
-from TableSys.DeckSys.Deck import Deck
-from TableSys.PlayerHand import check_one_pairs, check_four_of_a_kind, get_hand_combination_strength
 from TableSys.Table import Table
 
-from TableSys.Enums import TestMode
+from Enums import TestMode
 from testing.scene_generator import SceneGenerator
 
 # GAME SETTING
