@@ -5,7 +5,7 @@ import os
 class SceneGenerator:
     def generate_scenes(self, number_of_scenes):
         for i in range(0, number_of_scenes):
-            f = open(f'testing/scenes/simulation{i}.txt', "w+")
+            f = open(f'scenes/simulation{i}.txt', "w+")
             print(f'creating file:simulation{i}.txt...')
             for row in range(0, 10000):
                 if row < 9999:
@@ -34,4 +34,4 @@ class SceneGenerator:
 
     def delete_scenes(self, number_of_scenes):
         for i in range(0, number_of_scenes):
-            os.remove(f'testing/scenes/simulation{i}.txt')
+            os.remove(f'scenes/simulation{i}.txt')

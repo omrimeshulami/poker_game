@@ -1,12 +1,13 @@
 from random import randrange
 
 from TableSys.DeckSys.Deck import Deck
-from .Button import Button
 from Enums import Status, TableStatus, TestMode
 import threading
+
+from .ButtonSys.ButtonsSystem import ButtonSystem
 from .Player import Player
 import numpy as np
-from time import sleep
+
 lock = threading.Lock()
 
 
@@ -15,16 +16,14 @@ class Table:
         # for auto testing
         self.test_mode = test_mode
         if test_mode == TestMode.AUTOMATICALLY.value:
-            self.simulation = open(f'testing/scenes/simulation{index_file}.txt', "r")
+            self.simulation = open(f'../testing/scenes/simulation{index_file}.txt', "r")
         # table info
         self.table_status = TableStatus.WAIT_FOR_PLAYERS.value
         self.names_of_players_who_all_in_this_round = []
         self.game_pots = []
         self.players = {}  # {{key:name1 ,value:Player()},{key:name2 ,value:Player()}}
         self.names_of_players_remaining = []
-        self.small_button = Button(small_blind_value)
-        self.big_button = Button(big_blind_value)
-        self.dealer_button = Button(0)
+        self.button_system_manager = ButtonSystem(small_blind_value, big_blind_value)
         self.deck = Deck()
         self.cards_on_the_table = []
         self.current_player_name = ""
@@ -216,9 +215,11 @@ class Table:
 
     # TODO FINISHED
     def collect_blinds(self):
-        self.players[self.small_button.name].bank_account.call(self.small_button.value)
+        self.players[self.button_system_manager.small_button.name].bank_account.call(
+            self.button_system_manager.small_button.value)
 
-        self.players[self.big_button.name].bank_account.call(self.big_button.value)
+        self.players[self.button_system_manager.big_button.name].bank_account.call(
+            self.button_system_manager.big_button.value)
 
     def winner(self):
         players_to_choose_from = [key for key in self.players.keys() if self.players[key].status != Status.FOLDED.value]
@@ -228,7 +229,8 @@ class Table:
                 group_by_invest[self.players[name].bank_account.mini_game_investment] = []
             for name in players_to_choose_from:  # insert values to the array
                 group_by_invest[self.players[name].bank_account.mini_game_investment].append(
-                    {'name': name, 'hand_rank': self.players[name].hand.rank_score(self.cards_on_the_table)['rank_score'],
+                    {'name': name,
+                     'hand_rank': self.players[name].hand.rank_score(self.cards_on_the_table)['rank_score'],
                      'money_invest': self.players[name].bank_account.mini_game_investment})
             for key in group_by_invest.keys():
                 max_rank = 0
@@ -351,16 +353,17 @@ class Table:
     def set_table_for_new_game(self):
         for key in self.players.keys():
             self.names_of_players_remaining.append(self.players[key].name)
-        if self.small_button.name == "":
-            self.init_buttons()
+        if self.button_system_manager.small_button.name == "":
+            self.current_player_name = self.button_system_manager.init_buttons(self.names_of_players_remaining)
         else:
-            self.update_buttons()
+            self.current_player_name = self.button_system_manager.update_buttons(self.names_of_players_remaining,
+                                                                                 len(self.players))
         for key in self.players.keys():
-            if self.small_button.name == key:
+            if self.button_system_manager.small_button.name == key:
                 self.players[key].status = Status.SMALL_BLIND.value
-            elif self.big_button.name == key:
+            elif self.button_system_manager.big_button.name == key:
                 self.players[key].status = Status.BIG_BLIND.value
-            elif self.dealer_button.name == key:
+            elif self.button_system_manager.dealer_button.name == key:
                 self.players[key].status = Status.DEALER.value
             else:
                 self.players[key].status = Status.WAIT_FOR_TURN.value
@@ -391,8 +394,8 @@ class Table:
         self.names_of_players_remaining = []
         self.cards_on_the_table = []
         self.table_status = TableStatus.STARTING_NEW_GAME.value
-        if self.test_mode == TestMode.AUTOMATICALLY.value:
-            sleep(10)
+        # if self.test_mode == TestMode.AUTOMATICALLY.value:
+        #     sleep(10)
         if len(self.players) == 1:
             self.table_status = TableStatus.TABLE_FINISHED.value
 
@@ -411,9 +414,9 @@ class Table:
         players_cash = ""
         table_cards = "Card On The Table: "
         text += f'Total Pot: {self.pot_calc()} split pots: {self.game_pots}\n'
-        text += f'Dealer Button: {self.dealer_button.name if len(self.names_of_players_remaining) > 2 else "NOT IN USE"}\n'
-        text += f'Small Blind: {self.small_button.name}\n'
-        text += f'Big Blind: {self.big_button.name}\n'
+        text += f'Dealer Button: {self.button_system_manager.dealer_button.name if len(self.names_of_players_remaining) > 2 else "NOT IN USE"}\n'
+        text += f'Small Blind: {self.button_system_manager.small_button.name}\n'
+        text += f'Big Blind: {self.button_system_manager.big_button.name}\n'
         for i in range(0, len(self.cards_on_the_table)):
             table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
         text += f'{table_cards}\n'
@@ -423,56 +426,11 @@ class Table:
         print(text)
         print(f'player turn: {self.current_player_name}')
         print(f'Your Hand: {self.players[self.current_player_name].hand.print_hand()}')
+
     ################ GETTERS ###################
     # TODO FINISHED
     def get_player_hand(self, name):
         return self.players[name].hand
-
-    ############## BUTTON METHODS ##############
-    # TODO FINISHED
-    def init_buttons(self):
-        random_play_index = randrange(len(self.names_of_players_remaining))
-        if len(self.names_of_players_remaining) == 2:
-            self.small_button.name = self.names_of_players_remaining[
-                random_play_index % len(self.names_of_players_remaining)]
-            self.big_button.name = self.names_of_players_remaining[
-                (random_play_index + 1) % len(self.names_of_players_remaining)]
-            self.current_player_name = self.small_button.name
-            self.dealer_button.name = "NO NEED"
-        else:
-            self.dealer_button.name = self.names_of_players_remaining[
-                random_play_index % len(self.names_of_players_remaining)]
-            self.small_button.name = self.names_of_players_remaining[
-                (random_play_index + 1) % len(self.names_of_players_remaining)]
-            self.big_button.name = self.names_of_players_remaining[
-                (random_play_index + 2) % len(self.names_of_players_remaining)]
-            self.current_player_name = self.dealer_button.name
-
-    # TODO FINISHED
-    def update_buttons(self):
-        if len(self.names_of_players_remaining) == 2:
-            if self.small_button.name != self.names_of_players_remaining[0]:
-                self.small_button.name = self.names_of_players_remaining[0]
-                self.big_button.name = self.names_of_players_remaining[1]
-                self.current_player_name = self.names_of_players_remaining[0]
-                self.dealer_button.name = "NO NEED"
-            else:
-                self.small_button.name = self.names_of_players_remaining[1]
-                self.big_button.name = self.names_of_players_remaining[0]
-                self.current_player_name = self.names_of_players_remaining[1]
-                self.dealer_button.name = "NO NEED"
-        elif len(self.names_of_players_remaining) > 2:
-            self.dealer_button.name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.dealer_button.name) + 1) % len(
-                    self.names_of_players_remaining)]
-            self.small_button.name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.small_button.name) + 1) % len(
-                    self.names_of_players_remaining)]
-            self.big_button.name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.big_button.name) + 1) % len(
-                    self.names_of_players_remaining)]
-            self.current_player_name = self.names_of_players_remaining[
-                (self.names_of_players_remaining.index(self.dealer_button.name)) % len(self.players)]
 
     def open_rest_of_cards(self):
         if len(self.cards_on_the_table) == 0:
@@ -502,7 +460,6 @@ class Table:
                 else:
                     reward += self.players[key].bank_account.mini_game_investment
             for pot in self.game_pots:
-
                 reward -= pot['reward']
             self.game_pots.append({'invest': invest, 'reward': reward})
 
