@@ -31,6 +31,7 @@ class PlayerHand:
 
 
 def get_hand_combination_strength(hand):
+
     text =""
     for card in hand:
         text += f'{card.print_card()} ,'

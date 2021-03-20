@@ -1,4 +1,4 @@
-class FinancialSystem:
+class PlayerFinancialSystem:
 
     def __init__(self, stating_amount):
         self.total_cash = stating_amount

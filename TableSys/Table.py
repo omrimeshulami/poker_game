@@ -1,10 +1,11 @@
 from random import randrange
 
-from TableSys.DeckSys.Deck import Deck
+from TableSys.CardsSys.Deck import Deck
 from Enums import Status, TableStatus, TestMode
 import threading
 
 from .ButtonSys.ButtonsSystem import ButtonSystem
+from .CardsSys.CardsSys import CardSystem
 from .Player import Player
 import numpy as np
 
@@ -19,15 +20,16 @@ class Table:
             self.simulation = open(f'../testing/scenes/simulation{index_file}.txt', "r")
         # table info
         self.table_status = TableStatus.WAIT_FOR_PLAYERS.value
-        self.names_of_players_who_all_in_this_round = []
-        self.game_pots = []
+        self.button_system_manager = ButtonSystem(small_blind_value, big_blind_value)
+        self.cards_system_manager = CardSystem()
+
+        self.names_of_players_who_all_in_this_round = []    #need to update for financial system
+        self.game_pots = []                                 #need to update for financial system
+        self.starting_cash = starting_cash                  #need to update for financial system
+
         self.players = {}  # {{key:name1 ,value:Player()},{key:name2 ,value:Player()}}
         self.names_of_players_remaining = []
-        self.button_system_manager = ButtonSystem(small_blind_value, big_blind_value)
-        self.deck = Deck()
-        self.cards_on_the_table = []
         self.current_player_name = ""
-        self.starting_cash = starting_cash
         self.is_last_player_folded = False
         self.folded_player_index = None
         self.current_index = None
@@ -49,47 +51,47 @@ class Table:
 
 
         elif command_parts['action'] == "call":  # TODO "CALL" LOOKS LIKE ITS FINISHED
-            player_name_with_max_raise = max(self.names_of_players_remaining,
+            player_name_with_max_raise = max(self.names_of_players_remaining,                   #need to update for financial system
                                              key=lambda k: self.players[k].bank_account.round_investment)
-            max_raise_yet = self.players[player_name_with_max_raise].bank_account.round_investment
+            max_raise_yet = self.players[player_name_with_max_raise].bank_account.round_investment      #need to update for financial system
             self.players[self.current_player_name].status = Status.CALLED.value
-            if self.players[self.current_player_name].bank_account.need_all_in(max_raise_yet):
+            if self.players[self.current_player_name].bank_account.need_all_in(max_raise_yet):      #need to update for financial system
                 self.players[self.current_player_name].status = Status.CALL_ALL_IN.value
-                self.names_of_players_who_all_in_this_round.append(self.current_player_name)
-            self.players[self.current_player_name].bank_account.call(
+                self.names_of_players_who_all_in_this_round.append(self.current_player_name)    #need to update for financial system
+            self.players[self.current_player_name].bank_account.call(       #need to update for financial system
                 max_raise_yet - self.players[self.current_player_name].bank_account.round_investment)
             self.is_last_player_folded = False
             self.folded_player_index = 0
 
         elif command_parts['action'].lower() == "raise":
             player_name_with_max_raise = max(self.names_of_players_remaining,
-                                             key=lambda k: self.players[k].bank_account.round_investment)
+                                             key=lambda k: self.players[k].bank_account.round_investment)       #need to update for financial system
             max_invest_available_from_other_player = 0
             for key in self.players:
                 if key != self.current_player_name:
-                    if self.players[key].bank_account.round_investment + self.players[
-                        key].bank_account.max_bet_allowed > max_invest_available_from_other_player:
+                    if self.players[key].bank_account.round_investment + self.players[                          #need to update for financial system
+                        key].bank_account.max_bet_allowed > max_invest_available_from_other_player:                 #need to update for financial system
                         max_invest_available_from_other_player = self.players[key].bank_account.round_investment + \
-                                                                 self.players[key].bank_account.max_bet_allowed
+                                                                 self.players[key].bank_account.max_bet_allowed         #need to update for financial system
 
-            max_raise = self.players[player_name_with_max_raise].bank_account.round_investment
-            if self.players[self.current_player_name].bank_account.max_bet_allowed + self.players[
-                self.current_player_name].bank_account.round_investment == max_raise + int(command_parts['invest']):
+            max_raise = self.players[player_name_with_max_raise].bank_account.round_investment                          #need to update for financial system
+            if self.players[self.current_player_name].bank_account.max_bet_allowed + self.players[                          #need to update for financial system
+                self.current_player_name].bank_account.round_investment == max_raise + int(command_parts['invest']):            #need to update for financial system
                 self.players[
                     self.current_player_name].status = Status.RAISE_ALL_IN.value  # TODO "FOLD" LOOKS LIKE ITS FINISHED
-                self.players[self.current_player_name].bank_account.raise_bet(
-                    max_raise + int(command_parts['invest']) - self.players[
-                        self.current_player_name].bank_account.round_investment)
+                self.players[self.current_player_name].bank_account.raise_bet(#need to update for financial system
+                    max_raise + int(command_parts['invest']) - self.players[        #need to update for financial system
+                        self.current_player_name].bank_account.round_investment)    #need to update for financial system
             elif max_raise + int(command_parts['invest']) > max_invest_available_from_other_player:
                 self.players[self.current_player_name].status = Status.RAISED.value
-                self.players[self.current_player_name].bank_account.raise_bet(
-                    max_invest_available_from_other_player - self.players[
-                        self.current_player_name].bank_account.round_investment)
+                self.players[self.current_player_name].bank_account.raise_bet(  #need to update for financial system
+                    max_invest_available_from_other_player - self.players[          #need to update for financial system
+                        self.current_player_name].bank_account.round_investment)        #need to update for financial system
             else:
                 self.players[self.current_player_name].status = Status.RAISED.value
-                self.players[self.current_player_name].bank_account.raise_bet(
-                    max_raise + int(command_parts['invest']) - self.players[
-                        self.current_player_name].bank_account.round_investment)
+                self.players[self.current_player_name].bank_account.raise_bet(          #need to update for financial system
+                    max_raise + int(command_parts['invest']) - self.players[            #need to update for financial system
+                        self.current_player_name].bank_account.round_investment)        #need to update for financial system
             self.is_last_player_folded = False
             self.folded_player_index = 0
 
@@ -108,11 +110,15 @@ class Table:
         if self.is_mini_game_over():
             self.table_status = TableStatus.GAME_FINISHED.value
         elif self.is_round_over() and all_players_all_in_or_fold and raise_counter <= 1:
-            self.open_rest_of_cards()
+            print("here")
+            print(len(self.cards_system_manager.cards_on_the_table))
+            self.cards_system_manager.open_rest_of_cards()
+            print(len(self.cards_system_manager.cards_on_the_table))
+
             self.table_status = TableStatus.GAME_FINISHED.value
         elif self.is_round_over() and len(self.names_of_players_who_all_in_this_round) > 0:
             self.table_status = TableStatus.STARTING_NEW_ROUND.value
-            self.all_in_split_pot()
+            self.all_in_split_pot()     #need to update for financial system
             self.end_round()
         elif self.is_round_over():
             self.end_round()
@@ -152,8 +158,8 @@ class Table:
         check_option = "CHECK: check\n"
         call_option = "CALL: call\n"
         player_name_with_max_raise = max(self.names_of_players_remaining,
-                                         key=lambda k: self.players[k].bank_account.round_investment)
-        max_raise = self.players[player_name_with_max_raise].bank_account.round_investment
+                                         key=lambda k: self.players[k].bank_account.round_investment)#need to update for financial system
+        max_raise = self.players[player_name_with_max_raise].bank_account.round_investment  #need to update for financial system
         if self.test_mode == TestMode.AUTOMATICALLY.value:
             command = self.simulation.readline()[:-1]
         else:
@@ -168,7 +174,7 @@ class Table:
             print(f'Error:too long input')
         elif command_parts['action'] == "raise" and len(command_parts) == 2 and command_parts[
             'invest'].isnumeric() and \
-                self.players[self.current_player_name].bank_account.max_bet_allowed < max_raise + int(
+                self.players[self.current_player_name].bank_account.max_bet_allowed < max_raise + int(  #need to update for financial system
             command_parts['invest']):
             print(f'Error:try raise over max bet available')
             return "error"
@@ -205,33 +211,27 @@ class Table:
                 if self.table_status != TableStatus.GAME_FINISHED.value:
                     self.switch_to_next_player()
 
-    def open_new_card(self):
-        if len(self.cards_on_the_table) == 0:
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_flop()))
-        elif len(self.cards_on_the_table) == 3:
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_turn()))
-        elif len(self.cards_on_the_table) == 4:
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
 
     # TODO FINISHED
     def collect_blinds(self):
-        self.players[self.button_system_manager.small_button.name].bank_account.call(
+        self.players[self.button_system_manager.small_button.name].bank_account.call(   #need to update for financial system
             self.button_system_manager.small_button.value)
 
-        self.players[self.button_system_manager.big_button.name].bank_account.call(
+        self.players[self.button_system_manager.big_button.name].bank_account.call( #need to update for financial system
             self.button_system_manager.big_button.value)
 
     def winner(self):
+        print(len(self.cards_system_manager.cards_on_the_table))
         players_to_choose_from = [key for key in self.players.keys() if self.players[key].status != Status.FOLDED.value]
         group_by_invest = {}
         if len(players_to_choose_from) != 1:
             for name in players_to_choose_from:  # set the dict with key of invested and empty array
-                group_by_invest[self.players[name].bank_account.mini_game_investment] = []
+                group_by_invest[self.players[name].bank_account.mini_game_investment] = []  #need to update for financial system
             for name in players_to_choose_from:  # insert values to the array
-                group_by_invest[self.players[name].bank_account.mini_game_investment].append(
+                group_by_invest[self.players[name].bank_account.mini_game_investment].append(       #need to update for financial system
                     {'name': name,
-                     'hand_rank': self.players[name].hand.rank_score(self.cards_on_the_table)['rank_score'],
-                     'money_invest': self.players[name].bank_account.mini_game_investment})
+                     'hand_rank': self.players[name].hand.rank_score(self.cards_system_manager.cards_on_the_table)['rank_score'],
+                     'money_invest': self.players[name].bank_account.mini_game_investment}) #need to update for financial system
             for key in group_by_invest.keys():
                 max_rank = 0
                 for player in group_by_invest[key]:
@@ -257,7 +257,7 @@ class Table:
                 counter -= 1
             player_ordered_by_invest = sorted(player_ordered_by_invest, key=sort_invest_array)
             last_value = 0  # to same last key value
-            for pot in self.game_pots:
+            for pot in self.game_pots:      #need to update for financial system
                 had_player_with_this_invest = False
                 for player in player_ordered_by_invest:
                     if player['money_invest'] == pot['invest']:
@@ -269,23 +269,23 @@ class Table:
                 else:
                     last_value = pot['reward']
                     pot['reward'] = 0
-            if len(self.game_pots) > 0:
-                self.game_pots = [pot for pot in self.game_pots if pot['reward'] != 0]
+            if len(self.game_pots) > 0: #need to update for financial system
+                self.game_pots = [pot for pot in self.game_pots if pot['reward'] != 0]  #need to update for financial system
 
             while len(player_ordered_by_invest) != 0:
                 player_to_check = player_ordered_by_invest[0]
-                pot_to_split = [pot['reward'] for pot in self.game_pots if
-                                pot['invest'] == player_to_check['money_invest']][0]
+                pot_to_split = [pot['reward'] for pot in self.game_pots if  #need to update for financial system
+                                pot['invest'] == player_to_check['money_invest']][0]        #need to update for financial system
                 players_names_to_split_with = [player for player in player_ordered_by_invest if
                                                player['hand_rank'] >= player_to_check['hand_rank']]
                 for player in players_names_to_split_with:
-                    self.players[player['name']].bank_account.won_game_update(int(
+                    self.players[player['name']].bank_account.won_game_update(int(  #need to update for financial system
                         pot_to_split / len(players_names_to_split_with)))
                 player_ordered_by_invest = remove_all_players_with_same_investment(player_ordered_by_invest,
                                                                                    player_to_check['money_invest'])
-                for pot in self.game_pots:
+                for pot in self.game_pots:      #need to update for financial system
                     if pot['invest'] == player_to_check['money_invest']:
-                        self.game_pots.remove(pot)
+                        self.game_pots.remove(pot)      #need to update for financial system
 
     # TODO FINISHED
     def switch_to_next_player(self):
@@ -309,8 +309,8 @@ class Table:
     # TODO FINISHED
     def new_round(self):
         for name in self.names_of_players_remaining:
-            self.players[name].bank_account.new_round()
-        self.open_new_card()
+            self.players[name].bank_account.new_round() #need to update for financial system
+        self.cards_system_manager.open_new_card()
         for key in self.players.keys():
             if self.players[key].status == Status.RAISE_ALL_IN.value or self.players[
                 key].status == Status.CALL_ALL_IN.value:
@@ -368,31 +368,31 @@ class Table:
             else:
                 self.players[key].status = Status.WAIT_FOR_TURN.value
 
-        self.deck = Deck()
+        self.cards_system_manager.deck = Deck()
 
-        self.deck.deal_cards(self.players)
+        self.cards_system_manager.deck.deal_cards(self.players)
         self.collect_blinds()
 
         # TODO FINISHED
 
     def end_round(self):
-        self.names_of_players_who_all_in_this_round = []
+        self.names_of_players_who_all_in_this_round = []    #need to update for financial system
 
     def end_game(self):
-        if len(self.game_pots) == 0 and len(self.names_of_players_who_all_in_this_round) == 0:
+        if len(self.game_pots) == 0 and len(self.names_of_players_who_all_in_this_round) == 0:  #need to update for financial system
             self.create_single_pot_for_all_players()
-        elif len(self.game_pots) == 0 and len(self.names_of_players_who_all_in_this_round) != 0:
-            self.all_in_split_pot()
-            self.create_left_over_pot()
+        elif len(self.game_pots) == 0 and len(self.names_of_players_who_all_in_this_round) != 0:    #need to update for financial system
+            self.all_in_split_pot()         #need to update for financial system
+            self.create_left_over_pot()     #need to update for financial system
         else:
-            self.create_left_over_pot()
-        self.names_of_players_who_all_in_this_round = []
+            self.create_left_over_pot()     #need to update for financial system
+        self.names_of_players_who_all_in_this_round = []        #need to update for financial system
         self.winner()
         self.winner_status()
         self.update_losers()
         self.game_pots = []
         self.names_of_players_remaining = []
-        self.cards_on_the_table = []
+        self.cards_system_manager.cards_on_the_table = []
         self.table_status = TableStatus.STARTING_NEW_GAME.value
         # if self.test_mode == TestMode.AUTOMATICALLY.value:
         #     sleep(10)
@@ -401,7 +401,7 @@ class Table:
 
     # TODO FINISHED
     def is_mini_game_over(self):
-        if (len(self.cards_on_the_table) == 5 and self.is_round_over()) or len(
+        if (len(self.cards_system_manager.cards_on_the_table) == 5 and self.is_round_over()) or len(
                 self.names_of_players_remaining) == 1:
             return True
         else:
@@ -413,14 +413,15 @@ class Table:
         text = ''
         players_cash = ""
         table_cards = "Card On The Table: "
-        text += f'Total Pot: {self.pot_calc()} split pots: {self.game_pots}\n'
+        text += f'Total Pot: {self.pot_calc()} split pots: {self.game_pots}\n'  #need to update for financial system
         text += f'Dealer Button: {self.button_system_manager.dealer_button.name if len(self.names_of_players_remaining) > 2 else "NOT IN USE"}\n'
         text += f'Small Blind: {self.button_system_manager.small_button.name}\n'
         text += f'Big Blind: {self.button_system_manager.big_button.name}\n'
-        for i in range(0, len(self.cards_on_the_table)):
-            table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
+        for i in range(0, len(self.cards_system_manager.cards_on_the_table)):
+            table_cards += f'{self.cards_system_manager.cards_on_the_table[i].print_card()} ,'
         text += f'{table_cards}\n'
         for key in self.players.keys():
+            # need to update for financial system
             players_cash += f'{self.players[key].name}:\tCash In hand:{self.players[key].bank_account.max_bet_allowed},\tCash In in Pot:{self.players[key].bank_account.mini_game_investment},\tCash Invest In Round:{self.players[key].bank_account.round_investment},\tStatus:{self.players[key].status}\n'
         text += players_cash
         print(text)
@@ -431,20 +432,6 @@ class Table:
     # TODO FINISHED
     def get_player_hand(self, name):
         return self.players[name].hand
-
-    def open_rest_of_cards(self):
-        if len(self.cards_on_the_table) == 0:
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_flop()))
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_turn()))
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
-        elif len(self.cards_on_the_table) == 3:
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_turn()))
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
-        elif len(self.cards_on_the_table) == 4:
-            self.cards_on_the_table = np.concatenate((self.cards_on_the_table, self.deck.the_river()))
-        table_cards = "Card On The Table: "
-        for i in range(0, len(self.cards_on_the_table)):
-            table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
 
     def all_in_split_pot(self):
         players_all_in = {}
@@ -473,20 +460,20 @@ class Table:
         for key in self.players.keys():
 
             if self.players[key].bank_account.mini_game_eared > 0:
-                text += f'{key} won {self.players[key].bank_account.mini_game_eared} cash with {self.players[key].hand.rank_score(self.cards_on_the_table)["rank_name"]}\n'
+                text += f'{key} won {self.players[key].bank_account.mini_game_eared} cash with {self.players[key].hand.rank_score(self.cards_system_manager.cards_on_the_table)["rank_name"]}\n'
 
         print(text)
         table_cards = "Card On The Table: "
-        for i in range(0, len(self.cards_on_the_table)):
-            table_cards += f'{self.cards_on_the_table[i].print_card()} ,'
+        for i in range(0, len(self.cards_system_manager.cards_on_the_table)):
+            table_cards += f'{self.cards_system_manager.cards_on_the_table[i].print_card()} ,'
         print(table_cards)
         players_hands = "All Players hands:\n"
         for key in self.players.keys():
             player_hand = "("
-            for card in self.players[key].hand.rank_score(self.cards_on_the_table)['hand']:
+            for card in self.players[key].hand.rank_score(self.cards_system_manager.cards_on_the_table)['hand']:
                 player_hand += f'{card.print_card()}'
             player_hand += f')'
-            players_hands += f'{key} Hand:{player_hand},  Rank Name:{self.players[key].hand.rank_score(self.cards_on_the_table)["rank_name"]}   ,Rank Name:{self.players[key].hand.rank_score(self.cards_on_the_table)["rank_score"]}\n'
+            players_hands += f'{key} Hand:{player_hand},  Rank Name:{self.players[key].hand.rank_score(self.cards_system_manager.cards_on_the_table)["rank_name"]}   ,Rank Name:{self.players[key].hand.rank_score(self.cards_system_manager.cards_on_the_table)["rank_score"]}\n'
         print(players_hands)
 
     def create_single_pot_for_all_players(self):
